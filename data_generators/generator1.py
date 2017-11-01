@@ -11,9 +11,9 @@ def getDemand(nurses):
     return [sum(col) for col in zip(*nurses)]
 
 def getPresenceHours(nurses):
-    nursesWithoutBegin = [ittl.dropwhile(lambda x: x == 0, nurse) for nurse in nurses]
-    nursesWithoutBeginAndEnd = [ittl.dropwhile(lambda x: x == 0, reversed(nurse)) for nurse in nursesWithoutBegin]
-    return [len(list(nurse)) for nurse in nursesWithoutBeginAndEnd]
+    nursesWithoutBegin = [list(ittl.dropwhile(lambda x: x == 0, nurse)) for nurse in nurses]
+    nursesWithoutBeginAndEnd = [list(ittl.dropwhile(lambda x: x == 0, reversed(nurse))) for nurse in nursesWithoutBegin]
+    return [len(nurse) for nurse in nursesWithoutBeginAndEnd]
 
 def getConsecHours(nurses):
     nursesConsec = []
@@ -21,10 +21,10 @@ def getConsecHours(nurses):
         auxNurse = nurse
         maxConsecHours = 0
         while len(auxNurse) > 0:
-            auxNurse = ittl.dropwhile(lambda x: x == 0, auxNurse)
+            auxNurse = list(ittl.dropwhile(lambda x: x == 0, auxNurse))
             consecHours = len(list(ittl.takewhile(lambda x: x == 1, auxNurse)))
             maxConsecHours = max(maxConsecHours, consecHours)
-            auxNurse = ittl.dropwhile(lambda x: x == 1, auxNurse)
+            auxNurse = list(ittl.dropwhile(lambda x: x == 1, auxNurse))
         nursesConsec.append(maxConsecHours)
     return nursesConsec
 
@@ -36,16 +36,16 @@ def getRestingHours(nurses):
         auxNurse = list(ittl.dropwhile(lambda x: x == 0, nurse))
         auxNurse = list(ittl.dropwhile(lambda x: x == 0, reversed(auxNurse)))
         while len(auxNurse) > 0:
-            auxNurse = ittl.dropwhile(lambda x: x == 1, auxNurse)
+            auxNurse = list(ittl.dropwhile(lambda x: x == 1, auxNurse))
             consecRestHours = len(list(ittl.takewhile(lambda x: x == 0, auxNurse)))
             maxRestingHours = max(maxRestingHours, consecRestHours)
-            auxNurse = ittl.dropwhile(lambda x: x == 0, auxNurse)
+            auxNurse = list(ittl.dropwhile(lambda x: x == 0, auxNurse))
         nursesResting.append(maxRestingHours)
     return nursesResting
 
 def generateFeasible1(distrDemand):
     """
-    It creates a feasible instance of the problem
+    It creates a feasible instance of the problem given a distribution of the demand
     :param distrDemand: Probabilistic distribution of the demand
     :return: A dictionary containing the params of a feasible instance and the matrix of a possible solution
     """
@@ -69,13 +69,19 @@ def generateFeasible1(distrDemand):
                 presenceHours += 1
                 restHours = 1
 
-            elif restHours == 1 or demand[h] > 0:
+            elif restHours == 1 or auxDemand[h] > 0:
                 nurse.append(1)
                 auxDemand[h] = max(0, auxDemand[h] - 1)
                 restHours = 0
                 workedHours += 1
                 presenceHours += 1
                 consecHours += 1
+
+            elif workedHours > 0:
+                nurse.append(0)
+                consecHours = 0
+                presenceHours += 1
+                restHours = 1
 
             else:
                 nurse.append(0)
@@ -93,14 +99,21 @@ def generateFeasible1(distrDemand):
 
 
 def generateFeasible2(nNurses):
+    """
+    It creates a feasible instance for the problem given a number of nurses
+    :param nNurses: The number of nurses
+    :return: The params of the problem and a solution for these params
+    """
     nurses = []
     for _ in range(nNurses):
         m = rnd.randint(6, 18)
-        start = max(0, int(rnd.gauss(m, 10)))
-        end = max(0, int(rnd.gauss(m, 10)))
-        nurse = [0] * start + [1] * (end - start) + [0] * (hoursDay - end - 1)
-        restingHour = rnd.randint(start, end)
+        start = min(max(0, int(rnd.gauss(m-5, 4))), hoursDay - 1)
+        end = min(max(start+1, int(rnd.gauss(m+5, 4))), hoursDay)
+        nurse = [0] * start + [1] * (end - start) + [0] * (hoursDay - end)
+        restingHour = rnd.randint(start, end-1)
         nurse[restingHour] = 0
+        if sum(nurse) == 0:
+            nurse[restingHour] = 1
         nurses.append(nurse)
 
     params = {}
@@ -108,7 +121,7 @@ def generateFeasible2(nNurses):
     params["maxHours"] = max(getNursesHours(nurses))
     params["maxConsec"] = max(getConsecHours(nurses))
     params["maxPresence"] = max(getPresenceHours(nurses))
-    params["demand"] = max(getDemand(nurses))
+    params["demand"] = getDemand(nurses)
     params["nNurses"] = nNurses
 
     return (params, nurses)
@@ -198,7 +211,7 @@ def isAnswerCorrect(nurses, params):
 
     # check satified demand
     nNursesInHour = getDemand(nurses)
-    constrDemand = all((dem <= nNurses for (dem, nNurses) in zip(demand, nNursesInHour)))
+    constrDemand = all((dem <= nNurses for dem in nNursesInHour))
 
     # check maxPresence
     nursesMaxPresence = getPresenceHours(nurses)
@@ -212,7 +225,23 @@ def isAnswerCorrect(nurses, params):
     restingHours = getRestingHours(nurses)
     constrRestHours = all((1 >= restHours for restHours in restingHours))
 
+    allconstraints = [constrMinMaxHours, constrDemand, constrMaxPresence, constrMaxConsec, constrRestHours]
+    return (all(allconstraints), allconstraints)
 
+# Checking functions
+def checkAllOk():
+    distrDemand = (int(rnd.gauss(20, 5)) for _ in ittl.count())
+    for _ in range(100):
+        (params, nurses) = generateFeasible1(distrDemand)
+        correct = isAnswerCorrect(nurses, params)
+        assert correct
+        feasibility = analyseFeasability(params)
+        assert feasibility != "INFEASIBLE"
+        (params, nurses) = generateFeasible2(rnd.randint(10,100))
+        correct = isAnswerCorrect(nurses, params)
+        assert correct
+        feasibility = analyseFeasability(params)
+        assert feasibility != "INFEASIBLE"
 
 distrMinHours = (int(rnd.gauss(4, 1)) for _ in ittl.count())
 distrMaxHours = (int(rnd.gauss(10, 1)) for _ in ittl.count())
@@ -220,5 +249,12 @@ distrMaxConsec = (int(rnd.gauss(6, 1)) for _ in ittl.count())
 distrMaxPresence = (int(rnd.gauss(12, 1)) for _ in ittl.count())
 distrDemand = (int(rnd.gauss(20, 5)) for _ in ittl.count())
 
-params = generateRandom(distrDemand, distrMinHours, distrMaxHours, distrMaxConsec, distrMaxPresence)
-writeParams(params, "firstGenerated.dat")
+checkAllOk()
+
+# # params = generateRandom(distrDemand, distrMinHours, distrMaxHours, distrMaxConsec, distrMaxPresence)
+# (params, nurses) = generateFeasible1(distrDemand)
+# # (params, nurses) = generateFeasible2(10)
+# print(isAnswerCorrect(nurses, params))
+# # writeParams(params, "firstGenerated.dat")
+# print(params)
+# print(nurses)
