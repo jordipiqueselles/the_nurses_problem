@@ -1,21 +1,49 @@
 import random as rnd
 import itertools as ittl
-from enum import Enum
 import copy
-
-"""
-"""
-class Result(Enum):
-    """
-    Class used to indicate if an instance of the problem is feasible, infeasible or cannot be deduced at a glance
-    """
-    FEASIBLE = 0
-    INFEASIBLE = 1
-    UNKNOWN = 2
 
 hoursDay = 24
 
-def generateFeasible(distrDemand):
+def getNursesHours(nurses):
+    return [sum(nurse) for nurse in nurses]
+
+def getDemand(nurses):
+    return [sum(col) for col in zip(*nurses)]
+
+def getPresenceHours(nurses):
+    nursesWithoutBegin = [ittl.dropwhile(lambda x: x == 0, nurse) for nurse in nurses]
+    nursesWithoutBeginAndEnd = [ittl.dropwhile(lambda x: x == 0, reversed(nurse)) for nurse in nursesWithoutBegin]
+    return [len(list(nurse)) for nurse in nursesWithoutBeginAndEnd]
+
+def getConsecHours(nurses):
+    nursesConsec = []
+    for nurse in nurses:
+        auxNurse = nurse
+        maxConsecHours = 0
+        while len(auxNurse) > 0:
+            auxNurse = ittl.dropwhile(lambda x: x == 0, auxNurse)
+            consecHours = len(list(ittl.takewhile(lambda x: x == 1, auxNurse)))
+            maxConsecHours = max(maxConsecHours, consecHours)
+            auxNurse = ittl.dropwhile(lambda x: x == 1, auxNurse)
+        nursesConsec.append(maxConsecHours)
+    return nursesConsec
+
+def getRestingHours(nurses):
+    nursesResting = []
+    for nurse in nurses:
+        maxRestingHours = 0
+        # eliminate begin and tail
+        auxNurse = list(ittl.dropwhile(lambda x: x == 0, nurse))
+        auxNurse = list(ittl.dropwhile(lambda x: x == 0, reversed(auxNurse)))
+        while len(auxNurse) > 0:
+            auxNurse = ittl.dropwhile(lambda x: x == 1, auxNurse)
+            consecRestHours = len(list(ittl.takewhile(lambda x: x == 0, auxNurse)))
+            maxRestingHours = max(maxRestingHours, consecRestHours)
+            auxNurse = ittl.dropwhile(lambda x: x == 0, auxNurse)
+        nursesResting.append(maxRestingHours)
+    return nursesResting
+
+def generateFeasible1(distrDemand):
     """
     It creates a feasible instance of the problem
     :param distrDemand: Probabilistic distribution of the demand
@@ -64,6 +92,29 @@ def generateFeasible(distrDemand):
     return (params, nurses)
 
 
+def generateFeasible2(nNurses):
+    nurses = []
+    for _ in range(nNurses):
+        m = rnd.randint(6, 18)
+        start = max(0, int(rnd.gauss(m, 10)))
+        end = max(0, int(rnd.gauss(m, 10)))
+        nurse = [0] * start + [1] * (end - start) + [0] * (hoursDay - end - 1)
+        restingHour = rnd.randint(start, end)
+        nurse[restingHour] = 0
+        nurses.append(nurse)
+
+    params = {}
+    params["minHours"] = min(getNursesHours(nurses))
+    params["maxHours"] = max(getNursesHours(nurses))
+    params["maxConsec"] = max(getConsecHours(nurses))
+    params["maxPresence"] = max(getPresenceHours(nurses))
+    params["demand"] = max(getDemand(nurses))
+    params["nNurses"] = nNurses
+
+    return (params, nurses)
+
+
+
 def generateRandom(distrDemand, distrMinHours, distrMaxHours, distrMaxConsec, distrMaxPresence):
     """
     It creates a random (feasible or unfeasible) instance of the problem
@@ -100,11 +151,14 @@ def analyseFeasability(params):
     nNurses = params["nNurses"]
 
     if maxHours == 0 or maxHours < minHours or maxConsec == 0 or maxPresence == 0:
-        result = Result.INFEASIBLE
+        result = "INFEASIBLE"
     elif sum(demand) > nNurses * maxHours:
-        result = Result.INFEASIBLE
+        result = "INFEASIBLE"
     else:
-        result = Result.UNKNOWN
+        result = "UNKNOWN"
+
+    # We could call part of the body of the function generateFeasible in order to try to generate a nurses
+    # matrix that represents a solution. If we can generete this matrix, then a solution must exists
 
     return result
 
@@ -139,39 +193,24 @@ def isAnswerCorrect(nurses, params):
     nurses = list(filter(lambda nurse: sum(nurse) > 0, nurses))
 
     # check minHours and maxHours
-    totalNurseHours = [sum(nurse) for nurse in nurses]
+    totalNurseHours = getNursesHours(nurses)
     constrMinMaxHours = all((minHours <= nHours and nHours <= maxHours for nHours in totalNurseHours))
 
     # check satified demand
-    nNursesInHour = [sum(col) for col in zip(*nurses)]
+    nNursesInHour = getDemand(nurses)
     constrDemand = all((dem <= nNurses for (dem, nNurses) in zip(demand, nNursesInHour)))
 
     # check maxPresence
-    nursesWithoutBegin = [ittl.dropwhile(lambda x: x == 0, nurse) for nurse in nurses]
-    nursesWithoutBeginAndEnd = [ittl.dropwhile(lambda x: x == 0, reversed(nurse)) for nurse in nursesWithoutBegin]
-    constrMaxPresence = all((maxPresence >= len(nurse) for nurse in nursesWithoutBeginAndEnd))
+    nursesMaxPresence = getPresenceHours(nurses)
+    constrMaxPresence = all((maxPresence >= presence for presence in nursesMaxPresence))
 
     # check maxConsec
-    constrMaxConsec = True
-    for nurse in nurses:
-        auxNurse = nurse
-        while len(auxNurse) > 0:
-            auxNurse = ittl.dropwhile(lambda x: x == 0, auxNurse)
-            consecHours = len(list(ittl.takewhile(lambda x: x == 1, auxNurse)))
-            auxNurse = ittl.dropwhile(lambda x: x == 1, auxNurse)
-            constrMaxConsec = constrMaxConsec and (consecHours <= maxConsec)
+    consecHours = getConsecHours(nurses)
+    constrMaxConsec = all((maxConsec >= nurseConsecHours for nurseConsecHours in consecHours))
 
     # check resting hours
-    constrRestHours = True
-    for nurse in nurses:
-        # eliminate begin and tail
-        auxNurse = list(ittl.dropwhile(lambda x: x == 0, nurse))
-        auxNurse = list(ittl.dropwhile(lambda x: x == 0, reversed(auxNurse)))
-        while len(auxNurse) > 0:
-            auxNurse = ittl.dropwhile(lambda x: x == 1, auxNurse)
-            consecRestHours = len(list(ittl.takewhile(lambda x: x == 0, auxNurse)))
-            auxNurse = ittl.dropwhile(lambda x: x == 0, auxNurse)
-            constrRestHours = constrRestHours and (consecRestHours <= 1)
+    restingHours = getRestingHours(nurses)
+    constrRestHours = all((1 >= restHours for restHours in restingHours))
 
 
 
