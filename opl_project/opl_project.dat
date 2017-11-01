@@ -3,4 +3,9 @@
  * Author: pique
  * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
-prueba
+minHours=5;
+maxHours=10;
+maxConsec=6;
+maxPresence=11;
+demand=[20 20 17 21 25 20 20 14 28 25 23 16 28 14 21 21 17 21 16 15 16 15 20 20];
+nNurses=100;
