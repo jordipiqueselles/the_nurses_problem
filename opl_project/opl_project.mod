@@ -3,27 +3,27 @@
  * Author: pique
  * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
-
-int nEnfermeras=...;
-int nHoras=...;
-int demand_h=...;
+int nHoras=24;
+int nNurses=...;
 int minHours=...;
 int maxHours=...;
 int maxConsec=...;
 int maxPresence=...;
 
-range N=1..nEnfermeras;
+range N=1..nNurses;
 range H=1..nHoras;
+int demand[d in H]=...;
+
 range StartM=1..(nHoras-maxConsec);
 range rangeMaxC=1..maxConsec;
 
 //Variables
 dvar boolean Wn; //La enfermera n trabaja
 
-dvar float+ WH[n in N, h in H];
-dvar float+ E[n in N,h in H];
-dvar float+ S[n in N, h in H];
-dvar float+ DJ[n in N,h in H];
+dvar boolean WH[n in N, h in H];
+dvar boolean E[n in N,h in H];
+dvar boolean S[n in N, h in H];
+dvar boolean DJ[n in N,h in H];
 dvar int comienzo_n; 
 dvar int final_n;
 
@@ -32,27 +32,33 @@ minimize sum(n in N) Wn;
 subject to{
 	
 	//Constraint 1
+	//For each hour h, that at least demandh nurses should be working at the hospital
 	forall(h in H)
 	  sum(n in N)
-	    WH[n,h] >= demand_h;
+	    WH[n,h] >= demand[h];
 	    
 	//Constraint 2
+	//Each nurse should work at least minHours hours.
 	forall(n in N)
 	  sum(h in H)
 	    WH[n,h] >= minHours;
 	    
 	//Constraint 3
+	//Each nurse should work at most maxHours hours.
 	forall(n in N)
 	  sum(h in H)
 	    WH[n,h] <= maxHours;    
 	    
 	//Constraint 4
+	//Each nurse should work at most maxConsec consecutive hours.
+	
 	forall(n in N)
 		forall(start in StartM)
 	  		sum(h in rangeMaxC)
 	  		  WH[n,h+start] <=maxConsec; 
 	  		  
 	//Constraint 5
+	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)  
 		final_n-comienzo_n <= maxPresence;	
 		
@@ -67,10 +73,13 @@ subject to{
 	  		WH[n,h] <= Wn*nHoras;	
 	  		
 	//Constraint 8
+	//No nurse can rest for more than one consecutive hour
 	forall(n in N)
 	  forall(h in H)
-		DJ[n,h]+DJ[n,h+1] <= WH[n,h] +WH[n,h+1]+ 1;
+		if (h < nHoras)
+			DJ[n,h]+DJ[n,h+1] <= WH[n,h] +WH[n,h+1]+ 1;
 		
+	//Relación S y WH	
 	//Constraint 9
 	forall(n in N)
 		S[n,1] == WH[n,1];
@@ -78,13 +87,16 @@ subject to{
 	//Constraint 10
 	forall(n in N)
 	  forall(h in H)
-	    S[n,h-1]+WH[n,h] >= S[n,h];
+	    if (h > 1)
+	    	S[n,h-1]+WH[n,h] >= S[n,h];
 	
 	//Constraint 11
 	forall(n in N)
 	  forall(h in H)
-	    S[n,h-1]+WH[n,h] <= 2*S[n,h];
+	    if (h > 1)
+	    	S[n,h-1]+WH[n,h] <= 2*S[n,h];
 	    
+	//Relación E y WH
 	//Constraint 12
 	forall(n in N)
 	  E[n,nHoras]== WH[n,nHoras];
@@ -92,13 +104,16 @@ subject to{
 	//Constraint 13
 	forall(n in N)
 	  forall(h in H)
-	    E[n,h+1]+WH[n,h]>= E[n,h];
+	    if (h < nHoras)
+	    	E[n,h+1]+WH[n,h]>= E[n,h];
 	
 	//Constraint 14
 	forall(n in N)
 	  forall(h in H)
-	    E[n,h+1]+WH[n,h] <= 2*E[n,h];
+	    if (h < nHoras)
+	    	E[n,h+1]+WH[n,h] <= 2*E[n,h];
 	    
+	//Relación DJ con S y E
 	//Constraint 15
 	forall(n in N)
 	  forall(h in H)
@@ -110,10 +125,20 @@ subject to{
 	    S[n,h]+E[n,h] <= DJ[n,h]+1;
 	    
 	//Constraint 17
+	//Comienzo_n
 	forall(n in N)
 		comienzo_n == nHoras - sum(h in H)S[n,h];
 		
 	//Constraint 18
+	//Final_n
 	forall(n in N)
 	  	final_n == sum(h in H)E[n,h];
 }
+
+execute {
+	
+	for (var n=1;n<=nNurses;n++)
+		for (var h=1; h<=nHoras; h++)
+			writeln("" + WH[n][h]);
+		writeln('\n');
+};
