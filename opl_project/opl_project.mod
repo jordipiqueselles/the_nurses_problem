@@ -14,20 +14,20 @@ range N=1..nNurses;
 range H=1..nHoras;
 int demand[d in H]=...;
 
-range StartM=1..(nHoras-maxConsec);
-range rangeMaxC=1..maxConsec;
+range StartM=1..(nHoras-maxConsec-1);
+range rangeMaxC=1..(maxConsec+1);
 
 //Variables
-dvar boolean Wn; //La enfermera n trabaja
+dvar boolean Wn[n in N]; //La enfermera n trabaja
 
 dvar boolean WH[n in N, h in H];
-dvar boolean E[n in N,h in H];
+dvar boolean E[n in N, h in H];
 dvar boolean S[n in N, h in H];
-dvar boolean DJ[n in N,h in H];
-dvar int comienzo_n; 
-dvar int final_n;
+dvar boolean DJ[n in N, h in H];
+dvar int comienzo[n in N]; 
+dvar int final[n in N];
 
-minimize sum(n in N) Wn;
+minimize sum(n in N) Wn[n];
 
 subject to{
 	
@@ -41,7 +41,7 @@ subject to{
 	//Each nurse should work at least minHours hours.
 	forall(n in N)
 	  sum(h in H)
-	    WH[n,h] >= minHours;
+	    WH[n,h] >= minHours * Wn[n];
 	    
 	//Constraint 3
 	//Each nurse should work at most maxHours hours.
@@ -60,17 +60,17 @@ subject to{
 	//Constraint 5
 	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)  
-		final_n-comienzo_n <= maxPresence;	
+		final[n]-comienzo[n] <= maxPresence;	
 		
 	//Constraint 6
 	forall(n in N)
 		sum(h in H)
-	  		WH[n,h] >= Wn;
+	  		WH[n,h] >= Wn[n];
 	
 	//Constraint 7
 	forall(n in N)
 		sum(h in H)
-	  		WH[n,h] <= Wn*nHoras;	
+	  		WH[n,h] <= Wn[n]*nHoras;	
 	  		
 	//Constraint 8
 	//No nurse can rest for more than one consecutive hour
@@ -127,12 +127,13 @@ subject to{
 	//Constraint 17
 	//Comienzo_n
 	forall(n in N)
-		comienzo_n == nHoras - sum(h in H)S[n,h];
+		comienzo[n] == nHoras - sum(h in H)S[n,h];
 		
 	//Constraint 18
 	//Final_n
 	forall(n in N)
-	  	final_n == sum(h in H)E[n,h];
+	  	final[n] == sum(h in H)E[n,h];
+
 }
 
 execute {
