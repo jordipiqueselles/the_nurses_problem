@@ -3,9 +3,11 @@
  * Author: pique
  * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
-minHours=1;
-maxHours=16;
-maxConsec=11;
-maxPresence=17;
-demand=[0 0 3 4 5 5 8 7 8 5 8 8 6 0 0 0 8 7 0 0 0 0 0 0];
-nNurses=10;
+// FEASIBLE
+// COST 14
+minHours=5;
+maxHours=17;
+maxConsec=13;
+maxPresence=18;
+demand=[2 4 6 8 8 10 9 9 10 10 7 9 9 9 8 8 7 7 6 5 3 1 0 1];
+nNurses=14;

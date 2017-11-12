@@ -23,7 +23,7 @@ dvar boolean Wn[n in N]; //La enfermera n trabaja
 dvar boolean WH[n in N, h in H];
 dvar boolean E[n in N, h in H];
 dvar boolean S[n in N, h in H];
-dvar boolean DJ[n in N, h in H];
+//dvar boolean DJ[n in N, h in H];
 dvar int comienzo[n in N]; 
 dvar int final[n in N];
 
@@ -59,7 +59,8 @@ subject to {
 	//Constraint 5
 	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)  
-		final[n]-comienzo[n] <= maxPresence;	
+		final[n]-comienzo[n] <= maxPresence;
+		//(sum(h in H)E[n,h]) - (nHoras - sum(h in H)S[n,h]) <= maxPresence;	
 		
 	//Constraint 6
 	forall(n in N)
@@ -75,8 +76,9 @@ subject to {
 	//No nurse can rest for more than one consecutive hour
 	forall(n in N)
 	  forall(h in H)
-		if (h < nHoras)
-			DJ[n,h]+DJ[n,h+1] <= WH[n,h] + WH[n,h+1]+ 1;
+		if (h < nHoras-2)
+			WH[n,h] <= (WH[n,h+1] + WH[n,h+2]) + (sum(k in ((h+3)..nHoras)) (1-WH[n,k]))/(nHoras-h-2);
+			//DJ[n,h]+DJ[n,h+1] <= WH[n,h] + WH[n,h+1]+ 1;
 		
 	//Relación S y WH	
 	//Constraint 9
@@ -113,7 +115,7 @@ subject to {
 	    	E[n,h+1]+WH[n,h] <= 2*E[n,h];
 	    
 	//Relación DJ con S y E
-	//Constraint 15
+/*	//Constraint 15
 	forall(n in N)
 	  forall(h in H)
 	    S[n,h]+E[n,h] >= 2*DJ[n,h];
@@ -122,7 +124,7 @@ subject to {
 	forall(n in N)
 	  forall(h in H)
 	    S[n,h]+E[n,h] <= DJ[n,h]+1;
-	    
+*/	    
 	//Constraint 17
 	//Comienzo_n
 	forall(n in N)
@@ -144,3 +146,4 @@ execute {
 		write('\n');
 	}		
 };
+ 

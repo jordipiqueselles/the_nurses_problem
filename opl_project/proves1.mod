@@ -24,8 +24,8 @@ dvar boolean WH[n in N, h in H];
 dvar boolean E[n in N, h in H];
 dvar boolean S[n in N, h in H];
 dvar boolean DJ[n in N, h in H];
-dvar int comienzo[n in N]; 
-dvar int final[n in N];
+//dvar int comienzo[n in N]; 
+//dvar int final[n in N];
 
 minimize sum(n in N) Wn[n];
 
@@ -59,7 +59,8 @@ subject to {
 	//Constraint 5
 	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)  
-		final[n]-comienzo[n] <= maxPresence;	
+	// final[n]-comienzo[n] <= maxPresence;
+		(sum(h in H)E[n,h]) - (nHoras - sum(h in H)S[n,h]) <= maxPresence;	
 		
 	//Constraint 6
 	forall(n in N)
@@ -123,7 +124,7 @@ subject to {
 	  forall(h in H)
 	    S[n,h]+E[n,h] <= DJ[n,h]+1;
 	    
-	//Constraint 17
+/*	//Constraint 17
 	//Comienzo_n
 	forall(n in N)
 		comienzo[n] == nHoras - sum(h in H)S[n,h];
@@ -132,7 +133,7 @@ subject to {
 	//Final_n
 	forall(n in N)
 	  	final[n] == sum(h in H)E[n,h];
-
+*/
 }
 
 execute {
@@ -144,3 +145,4 @@ execute {
 		write('\n');
 	}		
 };
+ 
