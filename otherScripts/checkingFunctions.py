@@ -1,20 +1,40 @@
 import itertools as ittl
 
 def getNursesHours(nurses):
+    """
+    Get the amount of hours each nurse works
+    :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
+    :return: A list. The ith position have the number of hours the ith nurse works
+    """
     return [sum(nurse) for nurse in nurses]
 
 
 def getDemand(nurses):
+    """
+    Get the number of nurses that work at each hours
+    :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
+    :return: A list. The ith position have the number of nurses that work in the ith hour
+    """
     return [sum(col) for col in zip(*nurses)]
 
 
 def getPresenceHours(nurses):
+    """
+    For each nurse, gets the number of hours she is in the hospital
+    :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
+    :return: A list. The ith position have the number of hours the ith nurse spends at the hospital
+    """
     nursesWithoutBegin = [list(ittl.dropwhile(lambda x: x == 0, nurse)) for nurse in nurses]
     nursesWithoutBeginAndEnd = [list(ittl.dropwhile(lambda x: x == 0, reversed(nurse))) for nurse in nursesWithoutBegin]
     return [len(nurse) for nurse in nursesWithoutBeginAndEnd]
 
 
 def getConsecHours(nurses):
+    """
+    For each nurse, gets the maximum number of consecutive hours she works
+    :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
+    :return: A list. The ith position have the maximum number of consecutive hours the ith nurse works
+    """
     nursesConsec = []
     for nurse in nurses:
         auxNurse = nurse
@@ -29,6 +49,11 @@ def getConsecHours(nurses):
 
 
 def getRestingHours(nurses):
+    """
+    For each nurse, gets the maximum number of resting hours
+    :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
+    :return: A list. The ith position have the maximum number of resting hours for the ith nurse
+    """
     nursesResting = []
     for nurse in nurses:
         maxRestingHours = 0
@@ -71,9 +96,16 @@ def analyseFeasability(params):
 
 
 def isFeasibleGeneratorOk(nurses, params):
+    """
+    Checks if a feasible generator gives a correct instance
+    :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
+    :param params: Parameters of the problem
+    :return: True if it is correct, otherwise False
+    """
     satConstr = answerSatisfiesConstr(nurses, params)
     feasibility = analyseFeasability(params)
     return satConstr and feasibility != "INFEASIBLE"
+
 
 def answerSatisfiesConstr(nurses, params):
     """
