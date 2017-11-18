@@ -1,0 +1,8 @@
+// INFEASIBLE
+// That case test is an infeasible instance, the nurse must work 7 consecutive hours
+minHours=4;
+maxHours=10;
+maxConsec=6;
+maxPresence=12;
+demand=[0 0 1 1 1 1 1 1 1 0 1 0 1 1 0 0 0 0 0 0 0 0 0 0];
+nNurses=1;
