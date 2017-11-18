@@ -18,7 +18,8 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 # PATHS
-pathToOPL = '"C:\Program Files\IBM\ILOG\CPLEX_Studio1271\opl\\bin\\x64_win64\oplrun.exe"'
+# pathToOPL = '"C:\Program Files\IBM\ILOG\CPLEX_Studio1271\opl\\bin\\x64_win64\oplrun.exe"'
+pathToOPL = '"C:\Program Files\IBM\ILOG\CPLEX_Studio126\opl\\bin\\x64_win64\oplrun.exe"'
 pathToOps = "../opl_project/opl_project.ops"
 # pathToMod = "../opl_project/opl_project.mod"
 # pathToMod = "../opl_project/proves1.mod"
@@ -75,9 +76,6 @@ def executeOPL(datFolder):
     :param datFolder: Folder with the .dat files
     """
     listDat = list(filter(lambda f: len(f) > 5 and f[-4:] == ".dat", os.listdir(datFolder)))
-    ######## provisional
-    listDat = listDat[5:]
-    ########
     for (i, file) in enumerate(listDat):
         print(bcolors.BOLD + str(i+1) + "/" + str(len(listDat)) + bcolors.ENDC)
         print(bcolors.BOLD + "Executing", file, bcolors.ENDC)
