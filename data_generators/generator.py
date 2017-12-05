@@ -136,13 +136,14 @@ distrDemand = (int(rnd.gauss(20, 5)) for _ in ittl.count())
 
 nInstFeasible = 5 # number of feasible instances we want to generate
 # listFeasibleGenerators = [generateFeasible1, generateFeasible2]
-for i in range(nInstFeasible*2):
+whichFeasible = 1
+for i in range(nInstFeasible):
     # using generateFeasible1
-    if i < nInstFeasible:
+    if whichFeasible == 1:
         name = "feasible1_" + str(i+1) + ".dat"
         (params, nurses) = generateFeasible1(distrDemand)
     # using generateFeasible2
-    else:
+    elif whichFeasible == 2:
         name = "feasible2_" + str(i-nInstFeasible+1) + ".dat"
         (params, nurses) = generateFeasible2(rnd.randint(15,25))
     # stops the program if a generated instance is not OK

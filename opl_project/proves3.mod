@@ -1,7 +1,7 @@
 /*********************************************
  * OPL 12.7.1.0 Model
  * Author: pique
- * Creation Date: 12/11/2017 at 17.49.39
+ * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
 int nHoras=24;
 int nNurses=...;
@@ -24,13 +24,19 @@ dvar boolean WH[n in N, h in H];
 dvar boolean E[n in N, h in H];
 dvar boolean S[n in N, h in H];
 //dvar boolean DJ[n in N, h in H];
-//dvar int comienzo[n in N]; 
-//dvar int final[n in N];
+dvar int comienzo[n in N]; 
+dvar int final[n in N];
 
 minimize sum(n in N) Wn[n];
 
 subject to {
-	
+
+	// Constraint 0
+	// Accelerate the solver reducing the combinatorial exposion due to the idle nurses
+	forall(n in N)
+	  if(n > 1)
+	  	sum(h in H) WH[n-1,h] >= sum(h in H) WH[n,h];
+
 	//Constraint 1
 	//For each hour h, that at least demandh nurses should be working at the hospital
 	forall(h in H)
@@ -59,8 +65,8 @@ subject to {
 	//Constraint 5
 	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)  
-	// final[n]-comienzo[n] <= maxPresence;
-		(sum(h in H)E[n,h]) - (nHoras - sum(h in H)S[n,h]) <= maxPresence;	
+		final[n]-comienzo[n] <= maxPresence;
+		//(sum(h in H)E[n,h]) - (nHoras - sum(h in H)S[n,h]) <= maxPresence;	
 		
 	//Constraint 6
 	forall(n in N)
@@ -125,7 +131,7 @@ subject to {
 	  forall(h in H)
 	    S[n,h]+E[n,h] <= DJ[n,h]+1;
 */	    
-/*	//Constraint 17
+	//Constraint 17
 	//Comienzo_n
 	forall(n in N)
 		comienzo[n] == nHoras - sum(h in H)S[n,h];
@@ -134,11 +140,10 @@ subject to {
 	//Final_n
 	forall(n in N)
 	  	final[n] == sum(h in H)E[n,h];
-*/
+
 }
 
 execute {
-	
 	for (var n=1;n<=nNurses;n++) {
 		for (var h=1; h<=nHoras; h++) {
 			write("" + WH[n][h]);

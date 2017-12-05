@@ -1,13 +1,8 @@
-/*********************************************
- * OPL 12.7.1.0 Data
- * Author: pique
- * Creation Date: 24/10/2017 at 11.39.24
- *********************************************/
 // FEASIBLE
-// COST 14
-minHours=5;
-maxHours=17;
-maxConsec=13;
-maxPresence=18;
-demand=[2 4 6 8 8 10 9 9 10 10 7 9 9 9 8 8 7 7 6 5 3 1 0 1];
-nNurses=14;
+// COST 1100
+nNurses=1100;
+minHours=6;
+maxHours=18;
+maxConsec=7;
+maxPresence=24;
+demand=[964, 650, 966, 1021, 824, 387, 828, 952, 611, 468, 403, 561, 862, 597, 1098, 855, 918, 1016, 897, 356, 615, 670, 826, 349];

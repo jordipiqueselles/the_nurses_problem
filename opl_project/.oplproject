@@ -1,8 +1,32 @@
 <?xml version="1.0" encoding="ASCII"?><project>
 	<version>1.0</version>
 	<configs>
-		<config default="true" name="Configuration1" category="opl">
+		<config default="false" name="Configuration1" category="opl">
 			<ref name="opl_project.mod" type="model">
+			</ref>
+			<ref name="opl_project.ops" type="setting">
+			</ref>
+			<ref name="opl_project.dat" type="data">
+			</ref>
+		</config>
+		<config default="false" name="Configuration2" category="opl">
+			<ref name="opl_project.ops" type="setting">
+			</ref>
+			<ref name="opl_project.dat" type="data">
+			</ref>
+			<ref name="proves2.mod" type="model">
+			</ref>
+		</config>
+		<config default="false" name="Configuration3" category="opl">
+			<ref name="proves3.mod" type="model">
+			</ref>
+			<ref name="opl_project.ops" type="setting">
+			</ref>
+			<ref name="opl_project.dat" type="data">
+			</ref>
+		</config>
+		<config default="true" name="Configuration4" category="opl">
+			<ref name="proves4.mod" type="model">
 			</ref>
 			<ref name="opl_project.ops" type="setting">
 			</ref>

@@ -138,7 +138,6 @@ subject to {
 }
 
 execute {
-	
 	for (var n=1;n<=nNurses;n++) {
 		for (var h=1; h<=nHoras; h++) {
 			write("" + WH[n][h]);
