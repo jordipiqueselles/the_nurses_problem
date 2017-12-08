@@ -68,13 +68,86 @@ def constructNurses(params, alfa=0.1):
     return nurses, nNurses
 
 
+def getListFreeNurses(nurses, params):
+    freeNurses = [set() for _ in range(len(nurses[0]))]
+    for (i, nurse) in enumerate(nurses):
+        for (h, work) in enumerate(nurse):
+            if not work:
+                nurse[h] = 1
+                if checkConstraints(nurse, params):
+                    freeNurses[h].add(i)
+                nurse[h] = 0
+    return freeNurses
+
+
+def localSearchNurses(nurses, params):
+    demand = params["demand"]
+    offerNurses = getOffer(nurses)
+    extraNurses = [offerNurses[i] - demand[i] for i in range(len(demand))]
+    freeNurses = getListFreeNurses(nurses, params)
+
+    # try to eliminate every nurse
+    for (i, nurse) in enumerate(nurses):
+        if nurse is None:
+            continue
+
+        dictSubstitutes = {}
+        canEliminate = True
+
+        # for all hours from a nurse
+        for (h, work) in enumerate(nurse):
+            if work == 0 or extraNurses[h] > 0:
+                continue
+
+            # try to assign the hours to other nurses
+            for idNurse in freeNurses[h]:
+                otherNurse = nurses[idNurse]
+                otherNurse[h] = 1
+                if checkConstraints(otherNurse, params):
+                    dictSubstitutes[h] = idNurse
+                    break
+                else:
+                    otherNurse[h] = 0
+
+            # we couldn't find a substitute for the j-th hour
+            if h not in dictSubstitutes:
+                canEliminate = False
+                break
+
+        if canEliminate:
+            # update free nurses
+            for (hour, idNurse) in dictSubstitutes.items():
+                freeNurses[hour].remove(idNurse)
+            for setNurses in freeNurses:
+                if i in setNurses:
+                    setNurses.remove(i)
+
+            # update extraNurses
+            for (h, work) in enumerate(nurse):
+                # if the hour has been eliminated, not swapped with another nurse
+                if h not in dictSubstitutes:
+                    extraNurses[h] = extraNurses[h] - work
+            # "delete" nurse
+            nurses[i] = None
+
+        else:
+            # reset values for modified nurses
+            for (hour, idNurse) in dictSubstitutes.items():
+                nurses[idNurse][hour] = 0
+
+    nurses = list(filter(lambda nurse: nurse is not None, nurses))
+    return nurses, len(nurses)
+
+
 def localSearchNurse(nurses, params):
     demand = params["demand"]
     offerNurses = getOffer(nurses)
     extraNurses = [offerNurses[i] - demand[i] for i in range(len(demand))]
 
     canEliminateNurse = True
-    while canEliminateNurse:
+    numIt = 1
+    while canEliminateNurse and numIt > 0:
+        numIt -= 1
 
         # try to eliminate every nurse
         for (i, nurse) in enumerate(nurses):
@@ -193,13 +266,23 @@ distrDemand = (int(rnd.gauss(150, 20)) for _ in ittl.count())
 # exit(0)
 
 for _ in range(20):
-    (params, sol) = generateFeasible1(distrDemand)
+    (params, oldSol) = generateFeasible1(distrDemand)
     print(params)
-    print(len(sol))
-    (sol, cost) = localSearchNurse(sol, params)
+    oldCost = len(oldSol)
+    print(oldCost)
+
+    (sol, cost) = localSearchNurses(copy.copy(oldSol), params)
     print(sol)
     print(cost)
     sat = answerSatisfiesConstr(sol, params)
     print(sat)
-    print()
     assert all(sat[1][1:])
+
+    # (sol, cost) = localSearchNurse(copy.copy(oldSol), params)
+    # print(sol)
+    # print(cost)
+    # sat = answerSatisfiesConstr(sol, params)
+    # print(sat)
+    # assert all(sat[1][1:])
+
+    print()
