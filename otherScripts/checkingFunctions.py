@@ -9,7 +9,7 @@ def getNursesHours(nurses):
     return [sum(nurse) for nurse in nurses]
 
 
-def getDemand(nurses):
+def getOffer(nurses):
     """
     Get the number of nurses that work at each hours
     :param nurses: A matrix. The cell (i, j) is 1 if nurse "i" works at time "j"
@@ -73,7 +73,8 @@ def analyseFeasability(params):
     """
     This function tries to determine if an instance of the problem is feasible or not
     :param params: The params of the instance of the problem
-    :return: FEASIBLE if it is feasible, INFEASIBLE if it is unfeasible or UNKNOWN if it is not possible to determine it at a glance
+    :return: FEASIBLE if it is feasible, INFEASIBLE if it is unfeasible or UNKNOWN if it is not possible to determine
+    it at a glance
     """
     minHours = params["minHours"]
     maxHours = params["maxHours"]
@@ -82,7 +83,7 @@ def analyseFeasability(params):
     demand = params["demand"]
     nNurses = params["nNurses"]
 
-    if maxHours == 0 or maxHours < minHours or maxConsec == 0 or maxPresence == 0:
+    if maxHours == 0 or maxHours < minHours or maxConsec == 0 or maxPresence == 0 or maxPresence < minHours:
         result = "INFEASIBLE"
     elif sum(demand) > nNurses * maxHours:
         result = "INFEASIBLE"
@@ -129,10 +130,10 @@ def answerSatisfiesConstr(nurses, params):
 
     # check minHours and maxHours
     totalNurseHours = getNursesHours(nurses)
-    constrMinMaxHours = all((minHours <= nHours and nHours <= maxHours for nHours in totalNurseHours))
+    constrMinMaxHours = all((minHours <= nHours <= maxHours for nHours in totalNurseHours))
 
     # check satisfied demand
-    nNursesInHour = getDemand(nurses)
+    nNursesInHour = getOffer(nurses)
     constrDemand = all((dem <= nur for (nur, dem) in zip(nNursesInHour, demand)))
 
     # check maxPresence
@@ -147,5 +148,6 @@ def answerSatisfiesConstr(nurses, params):
     restingHours = getRestingHours(nurses)
     constrRestHours = all((1 >= restHours for restHours in restingHours))
 
-    allconstraints = [constrNNurses, constrMinMaxHours, constrDemand, constrMaxPresence, constrMaxConsec, constrRestHours]
-    return (all(allconstraints), allconstraints)
+    allconstraints = [constrNNurses, constrMinMaxHours, constrDemand,
+                      constrMaxPresence, constrMaxConsec, constrRestHours]
+    return all(allconstraints), allconstraints
