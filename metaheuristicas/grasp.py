@@ -7,6 +7,42 @@ from otherScripts.checkingFunctions import *
 hoursDay = 24
 
 
+def recursiveGenerateAllNurses(nurse, maxConsec, initHour, nHours):
+    constrMaxConsec = getConsecHours([nurse])[0] <= maxConsec
+
+    if not constrMaxConsec:
+        return []
+
+    elif nHours == 0:
+        return [nurse]
+
+    else:
+        nurses = []
+        for hour in range(initHour, min(initHour + 2, len(nurse) - nHours + 1)):
+            auxNurse = copy.copy(nurse)
+            auxNurse[hour] = 1
+            nurses += recursiveGenerateAllNurses(auxNurse, maxConsec, hour + 1, nHours - 1)
+        return nurses
+
+
+def generateAllNurses(params):
+    minHours = params["minHours"]
+    maxHours = params["maxHours"]
+    maxConsec = params['maxConsec']
+    maxPresence = params["maxPresence"]
+
+    nurses = []
+    for nHours in range(minHours, maxHours+1):
+        # print("Generating with nHours ->", nHours)
+        nurse = [1] + [0] * (maxPresence - 1)
+        nurses += recursiveGenerateAllNurses(nurse, maxConsec, 1, nHours - 1)
+
+    # print("Total nurses generated:", len(nurses))
+    # drop the 0s at the end
+    nurses = [list(ittl.dropwhile(lambda x: x == 0, reversed(nurse))) for nurse in nurses]
+    return nurses
+
+
 def checkConstraints(nurse, params):  # except minHours
     minHours = params["minHours"]
     maxHours = params["maxHours"]
@@ -28,41 +64,38 @@ def checkConstraints(nurse, params):  # except minHours
     # check resting hours
     constrRestHours = getRestingHours([nurse])[0] <= 1
 
-    return constrMaxHours and constrMaxPresence and constrMaxConsec and constrRestHours
+    return constrMinHours and constrMaxHours and constrMaxPresence and constrMaxConsec and constrRestHours
 
 
-def greedyCostNurse(nurse, demand, params):
-    greedyCost = [math.inf] * hoursDay
+def greedyCostNurse(feasibleNurses, demand, nElems=100, nPos=5):
+    listGreedyCost = []
+    for _ in range(nElems):
+        idx = rnd.randint(0, len(feasibleNurses) - 1)
+        auxNurse = feasibleNurses[idx]
+        for _ in range(nPos):
+            pos = rnd.randint(0, len(demand) - len(auxNurse))
+            nurse = [0] * pos + auxNurse + [0] * (len(demand) - pos - len(auxNurse))
+            greedyCost = sum((demand[i] * (1 - nurse[i]) for i in range(len(demand))))
+            listGreedyCost.append((greedyCost, nurse))
 
-    for (i, hour) in enumerate(nurse):
-        if hour == 0:
-            nurse[i] = 1
-            ok = checkConstraints(nurse, params)
-            if ok:
-                greedyCost[i] = 1 / (demand[i] + 0.00001)  # avoid dividing by 0
-            nurse[i] = 0
-
-    return greedyCost
+    return listGreedyCost
 
 
 def constructNurses(params, alfa=0.1):
     demand = params["demand"]
-    nurses = [[0] * hoursDay]
+    nurses = []
     auxDemand = copy.copy(demand)
+    feasibleNurses = generateAllNurses(params)
 
     # We don't have a solution until all the demand is satisfied
-    while sum(auxDemand) > 0:  # and nurses[-1] -> minHours
-        greedyCost = greedyCostNurse(nurses[-1], auxDemand, params)
-        if all((math.isinf(elem) for elem in greedyCost)):
-            nurses.append([0] * hoursDay)
-            continue
-
-        minCost = min(greedyCost)
-        maxCost = max(filter(lambda x: not math.isinf(x), greedyCost))
-        RCL = [elem[0] for elem in enumerate(greedyCost) if elem[1] <= minCost + alfa*(maxCost - minCost)]
+    while sum(auxDemand) > 0:
+        listGreedyCost = greedyCostNurse(feasibleNurses, auxDemand)
+        minCost = min(listGreedyCost)[0]
+        maxCost = max(listGreedyCost)[0]
+        RCL = [elem[1] for elem in listGreedyCost if elem[0] <= minCost + alfa*(maxCost - minCost)]
         randomElem = RCL[rnd.randint(0, len(RCL)-1)]
-        nurses[-1][randomElem] = 1
-        auxDemand[randomElem] = max(0, auxDemand[randomElem] - 1)
+        nurses.append(randomElem)
+        auxDemand = [max(0, auxDemand[i] - randomElem[i]) for i in range(len(auxDemand))]
 
     nNurses = len(nurses)
     return nurses, nNurses
@@ -139,89 +172,6 @@ def localSearchNurses(nurses, params):
     return nurses, len(nurses)
 
 
-def localSearchNurse(nurses, params):
-    demand = params["demand"]
-    offerNurses = getOffer(nurses)
-    extraNurses = [offerNurses[i] - demand[i] for i in range(len(demand))]
-
-    canEliminateNurse = True
-    numIt = 1
-    while canEliminateNurse and numIt > 0:
-        numIt -= 1
-
-        # try to eliminate every nurse
-        for (i, nurse) in enumerate(nurses):
-            canEliminateNurse = True
-            # make a copy of nurses without the selected nurse
-            remainingNurses = nurses[:i] + nurses[i+1:]
-            auxExtraNurses = copy.copy(extraNurses)
-
-            # for all hours from a nurse
-            for (j, h) in enumerate(nurse):
-                if h == -1:
-                    canEliminateNurse = False
-                    break
-
-                elif h == 1:
-                    # if there's more nurses than needed we can eliminate the hour this nurse works
-                    if auxExtraNurses[j] > 0:
-                        auxExtraNurses[j] -= 1
-                        continue
-
-                    # try to assign this hour to any of the remaining nurses
-                    canChangeHour = False
-                    for (k, otherNurse) in enumerate(remainingNurses):
-                        if otherNurse[j] == 0:
-                            otherNurse[j] = 1
-                            ok = checkConstraints(otherNurse, params)
-                            if ok:
-                                canChangeHour = True
-                                break
-                            else:
-                                otherNurse[j] = 0
-
-                    if not canChangeHour:
-                        canEliminateNurse = False
-                        break
-
-            if canEliminateNurse:
-                # nurses = remainingNurses
-                for i in range(len(nurse)):
-                    nurse[i] = -1
-                extraNurses = auxExtraNurses
-                break
-
-            # move the hours this nurse works where the number of extra nurses is lower
-            elif False:
-                minExtraNurses = min(extraNurses)
-                minIdx = extraNurses.index(minExtraNurses)
-
-                if nurse[minIdx] == 0:
-                    # nurse[minIdx] = 1
-                    # ok = checkConstraints(nurse, params)
-                    # if not ok:
-                    #     nurse[minIdx] = 0
-
-                    oldSum = sum(nurse)
-                    # for all hours from a nurse
-                    for (j, h) in enumerate(nurse):
-                        if h == 1 and extraNurses[j] > 0:
-                            nurse[j] = 0
-                            nurse[minIdx] = 1
-                            ok = checkConstraints(nurse, params)
-                            if ok:
-                                extraNurses[j] -= 1
-                                extraNurses[minIdx] += 1
-                            else:
-                                nurse[j] = 1
-                                nurse[minIdx] = 0
-
-                    assert oldSum == sum(nurse)
-
-    nurses = [nurse for nurse in nurses if sum(nurse) >= 0]
-    return nurses, len(nurses)
-
-
 def grasp(params, construct, localSearch, maxIter):
     """
     General GRASP algorithm
@@ -259,30 +209,50 @@ distrMaxPresence = (int(rnd.gauss(12, 1)) for _ in ittl.count())
 distrDemand = (int(rnd.gauss(150, 20)) for _ in ittl.count())
 
 # (params, sol) = generateFeasible2(200)
+# (params, oldSol) = generateFeasible1(distrDemand)
+# print("Cost generator ->", len(oldSol))
 # (sol, cost) = constructNurses(params, 0.1)
 # print(params["demand"])
 # print(getOffer(sol))
 # print(answerSatisfiesConstr(sol, params))
+# print("Cost constructor ->", cost)
+# (sol, cost) = localSearchNurses(sol, params)
+# print(answerSatisfiesConstr(sol, params))
+# print("Cost local search ->", cost)
 # exit(0)
 
 for _ in range(20):
     (params, oldSol) = generateFeasible1(distrDemand)
-    print(params)
-    oldCost = len(oldSol)
-    print(oldCost)
+    print("Cost generator ->", len(oldSol))
 
-    (sol, cost) = localSearchNurses(copy.copy(oldSol), params)
-    print(sol)
-    print(cost)
-    sat = answerSatisfiesConstr(sol, params)
-    print(sat)
-    assert all(sat[1][1:])
+    (sol, cost) = constructNurses(params, 0.1)
+    print(answerSatisfiesConstr(sol, params))
+    print("Cost constructor ->", cost)
 
-    # (sol, cost) = localSearchNurse(copy.copy(oldSol), params)
-    # print(sol)
-    # print(cost)
-    # sat = answerSatisfiesConstr(sol, params)
-    # print(sat)
-    # assert all(sat[1][1:])
+    (sol, cost) = localSearchNurses(sol, params)
+    print(answerSatisfiesConstr(sol, params))
+    print("Cost local search ->", cost)
 
     print()
+
+# for _ in range(20):
+#     (params, oldSol) = generateFeasible1(distrDemand)
+#     print(params)
+#     oldCost = len(oldSol)
+#     print(oldCost)
+#
+#     (sol, cost) = localSearchNurses(copy.copy(oldSol), params)
+#     print(sol)
+#     print(cost)
+#     sat = answerSatisfiesConstr(sol, params)
+#     print(sat)
+#     assert all(sat[1][1:])
+#
+#     # (sol, cost) = localSearchNurse(copy.copy(oldSol), params)
+#     # print(sol)
+#     # print(cost)
+#     # sat = answerSatisfiesConstr(sol, params)
+#     # print(sat)
+#     # assert all(sat[1][1:])
+#
+#     print()
