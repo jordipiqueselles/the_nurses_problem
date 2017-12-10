@@ -122,8 +122,8 @@ def answerSatisfiesConstr(nurses, params):
     demand = params["demand"]
     nNurses = params["nNurses"]
 
-    # check we have exactly nNurses
-    constrNNurses = nNurses == len(nurses)
+    # check we've used less than the maximum number of nurses
+    constrNNurses = len(nurses) <= nNurses
 
     # drop the nurses that don't work
     nurses = list(filter(lambda nurse: sum(nurse) > 0, nurses))

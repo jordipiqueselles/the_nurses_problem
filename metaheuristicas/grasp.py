@@ -2,6 +2,7 @@ import copy
 import random as rnd
 import math
 import multiprocessing as mp
+from functools import partial
 from otherScripts.checkingFunctions import *
 
 hoursDay = 24
@@ -44,16 +45,9 @@ def generateAllNurses(params):
 
 
 def checkConstraints(nurse, params):  # except minHours
-    minHours = params["minHours"]
     maxHours = params["maxHours"]
     maxConsec = params["maxConsec"]
     maxPresence = params["maxPresence"]
-
-    # check minHours
-    if getNursesHours([nurse])[0] >= minHours:
-        constrMinHours = True
-    else:
-        constrMinHours = True
 
     # check maxHours
     constrMaxHours = getNursesHours([nurse])[0] <= maxHours
@@ -64,7 +58,7 @@ def checkConstraints(nurse, params):  # except minHours
     # check resting hours
     constrRestHours = getRestingHours([nurse])[0] <= 1
 
-    return constrMinHours and constrMaxHours and constrMaxPresence and constrMaxConsec and constrRestHours
+    return constrMaxHours and constrMaxPresence and constrMaxConsec and constrRestHours
 
 
 def greedyCostNurse(feasibleNurses, demand, nElems=100, nPos=5):
@@ -74,6 +68,7 @@ def greedyCostNurse(feasibleNurses, demand, nElems=100, nPos=5):
         auxNurse = feasibleNurses[idx]
         for _ in range(nPos):
             pos = rnd.randint(0, len(demand) - len(auxNurse))
+            # Create nurse. It's a deep copy of the nurse selected from feasibleNurses
             nurse = [0] * pos + auxNurse + [0] * (len(demand) - pos - len(auxNurse))
             greedyCost = sum((demand[i] * (1 - nurse[i]) for i in range(len(demand))))
             listGreedyCost.append((greedyCost, nurse))
@@ -82,10 +77,10 @@ def greedyCostNurse(feasibleNurses, demand, nElems=100, nPos=5):
 
 
 def constructNurses(params, alfa=0.1):
+    feasibleNurses = params["feasibleNurses"]
     demand = params["demand"]
     nurses = []
     auxDemand = copy.copy(demand)
-    feasibleNurses = generateAllNurses(params)
 
     # We don't have a solution until all the demand is satisfied
     while sum(auxDemand) > 0:
@@ -172,7 +167,7 @@ def localSearchNurses(nurses, params):
     return nurses, len(nurses)
 
 
-def grasp(params, construct, localSearch, maxIter):
+def grasp(params, construct, localSearch, maxIter=10, alfa=0.1):
     """
     General GRASP algorithm
     :param params: Dictionary (instance for the problem)
@@ -183,76 +178,88 @@ def grasp(params, construct, localSearch, maxIter):
     """
     bestSol = None
     bestCost = math.inf
-    for _ in range(maxIter):
-        (sol, cost) = construct()
-        (sol, cost) = localSearch(sol)
+    for i in range(maxIter):
+        # print("Iteration", i)
+        (sol, cost) = construct(params, alfa)
+        (sol, cost) = localSearch(sol, params)
         if cost < bestCost:
             bestSol = sol
             bestCost = cost
     return bestCost, bestSol
 
 
-def parallelGrasp(params, construct, localSearch, maxIter, nThreads=mp.cpu_count()):
+def parallelGrasp(params, construct, localSearch, maxIter=10, alfa=0.1, nThreads=mp.cpu_count()):
     with mp.Pool(nThreads) as pool:
-        listResults = pool.map(grasp(params, construct, localSearch, maxIter//nThreads), range(nThreads))
+        # def auxGrasp(i):
+        #     return grasp(params, construct, localSearch, 1 + maxIter // nThreads, alfa)
+        # listResults = pool.map(auxGrasp, range(nThreads))
+        listResults = pool.map(partial(grasp, construct=construct, localSearch=localSearch,
+                                       maxIter=1 + maxIter//nThreads), [params]*nThreads)
         bestResult = min(listResults)
         return bestResult
 
 
-from data_generators.generator import generateFeasible2, generateFeasible1
+if __name__ == '__main__':
+    from data_generators.generator import generateFeasible2, generateFeasible1
+    from otherScripts.autoExecution import getParams
 
-# random generators for the different variables of an instance of the problem
-distrMinHours = (int(rnd.gauss(4, 1)) for _ in ittl.count())
-distrMaxHours = (int(rnd.gauss(10, 1)) for _ in ittl.count())
-distrMaxConsec = (int(rnd.gauss(6, 1)) for _ in ittl.count())
-distrMaxPresence = (int(rnd.gauss(12, 1)) for _ in ittl.count())
-distrDemand = (int(rnd.gauss(150, 20)) for _ in ittl.count())
+    # random generators for the different variables of an instance of the problem
+    distrMinHours = (int(rnd.gauss(4, 1)) for _ in ittl.count())
+    distrMaxHours = (int(rnd.gauss(10, 1)) for _ in ittl.count())
+    distrMaxConsec = (int(rnd.gauss(6, 1)) for _ in ittl.count())
+    distrMaxPresence = (int(rnd.gauss(12, 1)) for _ in ittl.count())
+    distrDemand = (int(rnd.gauss(150, 20)) for _ in ittl.count())
 
-# (params, sol) = generateFeasible2(200)
-# (params, oldSol) = generateFeasible1(distrDemand)
-# print("Cost generator ->", len(oldSol))
-# (sol, cost) = constructNurses(params, 0.1)
-# print(params["demand"])
-# print(getOffer(sol))
-# print(answerSatisfiesConstr(sol, params))
-# print("Cost constructor ->", cost)
-# (sol, cost) = localSearchNurses(sol, params)
-# print(answerSatisfiesConstr(sol, params))
-# print("Cost local search ->", cost)
-# exit(0)
+    # (params, sol) = generateFeasible2(200)
+    # (params, oldSol) = generateFeasible1(distrDemand)
+    # print("Cost generator ->", len(oldSol))
+    # (sol, cost) = constructNurses(params, 0.1)
+    # print(params["demand"])
+    # print(getOffer(sol))
+    # print(answerSatisfiesConstr(sol, params))
+    # print("Cost constructor ->", cost)
+    # (sol, cost) = localSearchNurses(sol, params)
+    # print(answerSatisfiesConstr(sol, params))
+    # print("Cost local search ->", cost)
+    # exit(0)
 
-for _ in range(20):
-    (params, oldSol) = generateFeasible1(distrDemand)
-    print("Cost generator ->", len(oldSol))
+    for _ in range(20):
+        # (params, oldSol) = generateFeasible1(distrDemand)
+        # print("Cost generator ->", len(oldSol))
+        params = getParams('../data_generators/autoGeneratedData/feasible2_3.dat')
 
-    (sol, cost) = constructNurses(params, 0.1)
-    print(answerSatisfiesConstr(sol, params))
-    print("Cost constructor ->", cost)
+        (sol, cost) = constructNurses(params, 0.1)
+        ok = answerSatisfiesConstr(sol, params)
+        print(ok)
+        assert ok[0]
+        print("Cost constructor ->", cost)
 
-    (sol, cost) = localSearchNurses(sol, params)
-    print(answerSatisfiesConstr(sol, params))
-    print("Cost local search ->", cost)
+        (sol, cost) = localSearchNurses(sol, params)
+        ok = answerSatisfiesConstr(sol, params)
+        print(ok)
+        assert ok[0]
+        print("Cost local search ->", cost)
 
-    print()
+        print()
 
-# for _ in range(20):
-#     (params, oldSol) = generateFeasible1(distrDemand)
-#     print(params)
-#     oldCost = len(oldSol)
-#     print(oldCost)
-#
-#     (sol, cost) = localSearchNurses(copy.copy(oldSol), params)
-#     print(sol)
-#     print(cost)
-#     sat = answerSatisfiesConstr(sol, params)
-#     print(sat)
-#     assert all(sat[1][1:])
-#
-#     # (sol, cost) = localSearchNurse(copy.copy(oldSol), params)
-#     # print(sol)
-#     # print(cost)
-#     # sat = answerSatisfiesConstr(sol, params)
-#     # print(sat)
-#     # assert all(sat[1][1:])
-#
-#     print()
+    # for _ in range(20):
+    #     (params, oldSol) = generateFeasible1(distrDemand)
+    #     print(params)
+    #     oldCost = len(oldSol)
+    #     print(oldCost)
+    #
+    #     (sol, cost) = localSearchNurses(copy.copy(oldSol), params)
+    #     print(sol)
+    #     print(cost)
+    #     sat = answerSatisfiesConstr(sol, params)
+    #     print(sat)
+    #     assert all(sat[1][1:])
+    #
+    #     # (sol, cost) = localSearchNurse(copy.copy(oldSol), params)
+    #     # print(sol)
+    #     # print(cost)
+    #     # sat = answerSatisfiesConstr(sol, params)
+    #     # print(sat)
+    #     # assert all(sat[1][1:])
+    #
+    #     print()
