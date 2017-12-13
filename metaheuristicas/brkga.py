@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from otherScripts.checkingFunctions import answerSatisfiesConstr
+from otherScripts.checkingFunctions import *
 
 
 class Brkga:
@@ -90,44 +90,52 @@ class Brkga:
 
 def decoder(population, params):
     hoursDay = params['hoursDay']
+    minHours = params["minHours"]
     maxHours = params["maxHours"]
     maxConsec = params["maxConsec"]
     maxPresence = params["maxPresence"]
 
-    qMax = int(math.ceil((maxPresence + 1) / (maxConsec + 1)))
+    # qMax = int(math.ceil((maxPresence + 1) / (maxConsec + 1)))
+    qMax = maxPresence - maxHours + 1
     lastInitHour = hoursDay - maxPresence
+    # lastInitHour = hoursDay - minHours - math.ceil(minHours/maxHours) + 1
 
     listNurses = []
     for elem in population:
         nurses = []
         for i in range(0, len(elem), qMax+1):
-            encodedNurse = elem[i:i+qMax+1]
-            initHour = int(round(encodedNurse[0] * lastInitHour, 0))
+            initHour = int(round(elem[i] * lastInitHour, 0))
+            # q = min(qMax, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))))
+            q = qMax
+            encodedNurse = elem[i+1:i+q+1]
             workedHours = maxHours
-            s = sum(encodedNurse[1:])
-            aux = [x/s for x in encodedNurse[1:]]
+            s = sum(encodedNurse)
+            aux = [x/s for x in encodedNurse]
             chunksHours = [0] * len(aux)
             for j in range(len(aux)):
                 chunksHours[j] = min(maxConsec, int(aux[j]*workedHours))
                 if chunksHours[j] == maxConsec:
                     aux[j] = 0
                 else:
-                    aux[j] -= chunksHours[j] * workedHours
+                    aux[j] -= chunksHours[j] / workedHours
 
             sortedAux = sorted(enumerate(aux), key=lambda x: x[1], reverse=True)
             remainingHours = workedHours - sum(chunksHours)
-            for j in range(remainingHours):
-                if sortedAux[j][1] == 0:
-                    break
-                else:
-                    chunksHours[sortedAux[j][0]] += 1
+            while remainingHours > 0:
+                for (j, x) in sortedAux:
+                    if x != 0:
+                        chunksHours[j] += 1
+                        remainingHours -= 1
+                        if remainingHours == 0:
+                            break
 
             nurse = [0] * initHour
             for chunk in chunksHours:
-                nurse += [1] * chunk + [0]
+                if chunk != 0:
+                    nurse += [1] * chunk + [0]
             nurse += [0] * hoursDay
             nurse = nurse[:hoursDay]
-            print(nurse)
+            print(nurse, sum(nurse))
             nurses.append(nurse)
 
         print()
@@ -152,5 +160,6 @@ def proves():
     listNurses = decoder([population], params)
     for nurses in listNurses:
         print(answerSatisfiesConstr(nurses, params))
+        print(getOffer(nurses))
 
 proves()
