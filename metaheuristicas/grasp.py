@@ -6,9 +6,7 @@ from functools import partial
 def grasp(problem, maxIter=10, alfa=0.1):
     """
     General GRASP algorithm
-    :param params: Dictionary (instance for the problem)
-    :param construct: Function to construct the initial solution
-    :param localSearch: Function for local search
+    :param problem: An object representing an instance of a problem with the methods 'construct' and 'localSearch'
     :param maxIter: Maximum number of iterations
     :param alfa: Control of the randomnes. 0 no random, 1 total random
     :return: The best solution and the best cost

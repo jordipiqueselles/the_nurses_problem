@@ -4,7 +4,7 @@ import itertools as ittl
 import otherScripts.checkingFunctions as check
 
 
-class graspNurses:
+class GraspNurses:
     def __init__(self, demand, minHours, maxHours, maxConsec, maxPresence):
         self.demand = demand
         self.minHours = minHours

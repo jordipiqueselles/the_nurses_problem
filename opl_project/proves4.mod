@@ -3,8 +3,10 @@
  * Author: pique
  * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
-int nHoras=24;
-int nNurses=...;
+int hours=...;
+int nHoras=hours;
+int numNurses=...;
+int nNurses=numNurses;
 int minHours=...;
 int maxHours=...;
 int maxConsec=...;
