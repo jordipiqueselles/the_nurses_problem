@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
 from otherScripts.checkingFunctions import *
 
 
@@ -9,17 +10,22 @@ class Brkga:
         self.decode = decode
         self.population = []
 
-    def run(self, data, chrLength, numIndividuals=100, maxGenerations=1000, eliteProp=0.1, mutantsProp=0.2,
-            inheritanceProp=0.7):
+    def run(self, data, chrLength, numIndividuals=100, maxGenerations=100, eliteProp=0.1, mutantsProp=0.2,
+            inheritanceProp=0.7, verb=True):
+
+        # Get numElite, numMutants and numCrossover from the proportions
         numElite = int(math.ceil(numIndividuals * eliteProp))
         numMutants = int(math.ceil(numIndividuals * mutantsProp))
         numCrossover = max(numIndividuals - numElite - numMutants, 0)
+
         self.population = self._initializePopulation(numIndividuals, chrLength)
         evol = []
 
-        for _ in range(maxGenerations):
+        for i in range(maxGenerations):
             self.population = self.decode(self.population, data)
             evol.append(self._getBestFitness()['fitness'])
+            if verb:
+                print("Generation", i, "| MaxFitness", evol[-1])
 
             elite, nonelite = self._classifyIndividuals(numElite)
             mutants = self._generateMutantIndividuals(numMutants, chrLength)
@@ -28,13 +34,17 @@ class Brkga:
 
         self.population = self.decode(self.population, data)
         bestIndividual = self._getBestFitness()
-        plt.plot(evol)
-        plt.xlabel('number of generations')
-        plt.ylabel('Fitness of best individual')
-        plt.axis([0, len(evol), 0, (chrLength + 1) * chrLength / 2])
-        plt.show()
 
-        print(bestIndividual)
+        if verb:
+            plt.plot(evol)
+            plt.xlabel('number of generations')
+            plt.ylabel('Fitness of best individual')
+            plt.axis([0, len(evol), 0, (chrLength + 1) * chrLength / 2])
+            plt.show()
+
+            print(bestIndividual)
+
+        return bestIndividual
 
     @staticmethod
     def _initializePopulation(numIndividuals, chrLength):
@@ -85,7 +95,7 @@ class Brkga:
 
 def getChrLength(params):
     # Max number of groups of consecutive working hours
-    maxNumGroupConsecH = params['maxPresence'] - params['maxHours'] + 1
+    maxNumGroupConsecH = min(params['maxPresence'] - params['maxHours'] + 1, params['maxHours']*2 - 1)
     # Length of an encoded nurse
     legthEncodedNurse = maxNumGroupConsecH + 2
     return params['numNurses'] * legthEncodedNurse
@@ -93,31 +103,37 @@ def getChrLength(params):
 
 def decode(population, params, verbose=False):
     hoursDay = params['hoursDay']
-    # minHours = params["minHours"]
+    minHours = params["minHours"]
     maxHours = params["maxHours"]
     maxConsec = params["maxConsec"]
     maxPresence = params["maxPresence"]
     demand = params["demand"]
     numNurses = params['numNurses']
 
+    # Sometimes it's impossible to work exactly maxHours
+    maxHours = min(maxHours, maxPresence - maxPresence//maxConsec)
     # Max number of groups of consecutive working hours
-    maxNumGroupConsecH = maxPresence - maxHours + 1
-    # Length of an encoded nurse
-    legthEncodedNurse = maxNumGroupConsecH + 2
+    maxNumGroupConsecH = min(maxPresence - maxHours + 1, maxHours*2 - 1)
+    # Max length of an encoded nurse
+    maxLenEncNurse = maxNumGroupConsecH + 2
     # Last hour when the working day of a nurse can start
-    lastInitHour = hoursDay - maxPresence
+    # lastInitHour = hoursDay - maxPresence
+    lastInitHour = hoursDay - maxHours - math.ceil(maxHours/maxConsec) + 1
 
     listSolutions = []
-    for encodedSetNurses in population:
+    populationChr = (ind['chr'] for ind in population)
+    for encodedSetNurses in populationChr:
         nurses = []
-        for i in range(0, len(encodedSetNurses), legthEncodedNurse):
-            encodedNurse = encodedSetNurses[i:legthEncodedNurse]
+        for i in range(0, len(encodedSetNurses), maxLenEncNurse):
+            # q = min(qMax, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))))
+            encodedNurse = encodedSetNurses[i:i+maxLenEncNurse]
             works = encodedNurse[0] >= 0.5  # if the nurse works
             initHour = int(round(encodedNurse[1] * lastInitHour, 0))  # the hour she starts working
-            encodedConsecHours = encodedNurse[2:legthEncodedNurse]  # the chunks of consecutive hours encoded
+            lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour)/maxConsec)) + 2)
+            encConsecHours = encodedNurse[2:lenEncNurse]  # the chunks of consecutive hours encoded
             workedHours = maxHours  # number of hours the nurse works
-            s = sum(encodedConsecHours)
-            normEncodedNurse = [x/s for x in encodedConsecHours]
+            s = sum(encConsecHours)
+            normEncodedNurse = [x/s for x in encConsecHours]
             chunksHours = [0] * len(normEncodedNurse)  # length of each group of consecutive hours
 
             if works:
@@ -158,7 +174,7 @@ def decode(population, params, verbose=False):
         # calculate the dictionary we'll add to listSolutions
         nWorkNurses = sum(sum(n) > 0 for n in nurses)
         offer = getOffer(nurses)
-        uncovDemand = sum(min(0, demand[i] - offer[i]) for i in range(len(demand)))
+        uncovDemand = sum(max(0, demand[i] - offer[i]) for i in range(len(demand)))
         solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*numNurses + nWorkNurses}
         listSolutions.append(solution)
 
@@ -170,19 +186,46 @@ def proves():
     params['hoursDay'] = 24
     params["maxHours"] = 8
     params["maxConsec"] = 4
-    params["maxPresence"] = 10
+    params["maxPresence"] = 23
     params["demand"] = [0] * params['hoursDay']
     params["minHours"] = 4
     params['numNurses'] = 100
 
-    maxNumGroupConsecH = params["maxPresence"] - params["maxHours"] + 1
-    population = np.random.rand((maxNumGroupConsecH+2)*params['numNurses'])
+    lenChr = getChrLength(params)
+    ind = dict()
+    ind['chr'] = np.random.rand(lenChr)
 
-    listNurses = decode([population], params)
-    for nurses in listNurses:
+    listNurses = decode([ind], params, verbose=True)
+    for elem in listNurses:
+        nurses = elem['solution']
         print(answerSatisfiesConstr(nurses, params))
         print(getOffer(nurses))
 
 
+def proves2():
+    params = dict()
+    params['hoursDay'] = 24
+    params["maxHours"] = 8
+    params["maxConsec"] = 4
+    params["maxPresence"] = 10
+    params["demand"] = [elem*(params['hoursDay'] - elem) for elem in range(params['hoursDay'])]
+    params["minHours"] = 4
+    params['numNurses'] = 300
+
+    solver = Brkga(decode)
+    solution = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=400)
+    nurses = solution['solution']
+
+    for nurse in nurses:
+        print(nurse)
+    print()
+    print(answerSatisfiesConstr(nurses, params))
+    print(params['demand'])
+    print(getOffer(nurses))
+
+
 if __name__ == '__main__':
-    proves()
+    # logging.basicConfig(level=logging.DEBUG)
+    # logging.debug('hola')
+    # logging.info('adeu')
+    proves2()
