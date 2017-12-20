@@ -2,16 +2,35 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
+import time
 from otherScripts.checkingFunctions import *
 
 
 class Brkga:
     def __init__(self, decode):
+        """
+        :param decode: Decoder for the problem
+        """
         self.decode = decode
         self.population = []
 
     def run(self, data, chrLength, numIndividuals=100, maxGenerations=100, eliteProp=0.1, mutantsProp=0.2,
-            inheritanceProp=0.7, verb=True):
+            inheritanceProp=0.7, verb=True, timeLimit=math.inf):
+        """
+
+        :param data: Data defining the problem. It's a dictionary of parameters.
+        :param chrLength: Length of the chromosome for an individual
+        :param numIndividuals: Number of individuals in the population
+        :param maxGenerations: Maximum number of generations
+        :param eliteProp: Proportion of individuals that will belong to the elite segment
+        :param mutantsProp: Proportion of mutants generated at each iteration
+        :param inheritanceProp: Probability of inheriting from an elite individual
+        :param verb: Activate verbose mode (and plot)
+        :param timeLimit: Maximum amount of time to do the computations
+        :return: The best individual found
+        """
+
+        initTime = time.time()
 
         # Get numElite, numMutants and numCrossover from the proportions
         numElite = int(math.ceil(numIndividuals * eliteProp))
@@ -32,6 +51,9 @@ class Brkga:
             crossover = self._doCrossover(elite, nonelite, inheritanceProp, numCrossover)
             self.population = elite + crossover + mutants
 
+            if (time.time() - initTime) / 1000 > timeLimit:
+                break
+
         self.population = self.decode(self.population, data)
         bestIndividual = self._getBestFitness()
 
@@ -48,6 +70,12 @@ class Brkga:
 
     @staticmethod
     def _initializePopulation(numIndividuals, chrLength):
+        """
+        Initialize the population randomly
+        :param numIndividuals: Number of individuals to generate
+        :param chrLength: Length of the chromosome of one individual
+        :return: The generated population
+        """
         population = []
         for i in range(numIndividuals):
             chromosome = list(np.random.rand(chrLength))
@@ -55,6 +83,11 @@ class Brkga:
         return population
 
     def _classifyIndividuals(self, numElite):
+        """
+        Classifies the population between elite members and non-elite
+        :param numElite: Number of individuals that will be considered as elite
+        :return: A tuple. The first element is the list of elite elements and the second is the list of non-elite
+        """
         fitness = np.array([e['fitness'] for e in self.population])
         order = sorted(range(len(fitness)), key=lambda k: fitness[k])
         whichElite = order[0:numElite]
@@ -66,6 +99,12 @@ class Brkga:
 
     @staticmethod
     def _generateMutantIndividuals(numMutants, chrLength):
+        """
+        Generates some mutant elements
+        :param numMutants: Number of mutants to generate
+        :param chrLength: Length of the chromosome of one individual
+        :return: The mutants generated
+        """
         mutants = []
         for i in range(numMutants):
             chromosome = list(np.random.rand(chrLength))
@@ -74,6 +113,14 @@ class Brkga:
 
     @staticmethod
     def _doCrossover(elite, nonelite, ro, numCrossover):
+        """
+        Do the crossover to create a new generation
+        :param elite: Elite individuals
+        :param nonelite: Non-elite individuals
+        :param ro: Probability of inheriting from an elite element
+        :param numCrossover: Number of new elements generated using crossover
+        :return: The crossover elements generated
+        """
         crossover = []
         for i in range(numCrossover):
             indexElite = int(math.floor(np.random.rand() * len(elite)))
@@ -86,14 +133,19 @@ class Brkga:
         return crossover
 
     def _getBestFitness(self):
-        # fitness = np.array([e['fitness'] for e in population])
-        # order = sorted(range(len(fitness)), key=lambda k: fitness[k])
-        # return population[order[0]]
+        """
+        :return: The fitness of the best individual in the population
+        """
         bestFit = min(self.population, key=lambda x: x['fitness'])
         return bestFit
 
 
 def getChrLength(params):
+    """
+    Gets the length of the chromosome for an instance of the nurses problem
+    :param params: Parameters defining an instance of the nurses problem
+    :return: The length of the chromosome
+    """
     # Max number of groups of consecutive working hours
     maxNumGroupConsecH = min(params['maxPresence'] - params['maxHours'] + 1, params['maxHours']*2 - 1)
     # Length of an encoded nurse
@@ -102,6 +154,13 @@ def getChrLength(params):
 
 
 def decode(population, params, verbose=False):
+    """
+    Deocder for the nurses optimization problem
+    :param population: [{'chr': chromosome, ...}, {...}, ...]
+    :param params: Dictionary with hoursDay, minHours, maxHours, maxConsec, maxPresence, demand and numNurses
+    :param verbose: Activate verbose mode
+    :return: [{'chr': chromosome, 'solution': solution, 'fitness': fitness}, ...]
+    """
     hoursDay = params['hoursDay']
     minHours = params["minHours"]
     maxHours = params["maxHours"]
@@ -213,7 +272,7 @@ def proves2():
     params['numNurses'] = 300
 
     solver = Brkga(decode)
-    solution = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=400)
+    solution = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=300)
     nurses = solution['solution']
 
     for nurse in nurses:

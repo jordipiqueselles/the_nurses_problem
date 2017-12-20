@@ -1,40 +1,75 @@
+import time
 import math
 import multiprocessing as mp
 from functools import partial
+import metaheuristicas.graspNurses as graspNurses
 
 
-def grasp(problem, maxIter=10, alfa=0.1):
+def grasp(problem, maxIter=10, alfa=0.1, verb=True, timeLimit=math.inf):
     """
     General GRASP algorithm
     :param problem: An object representing an instance of a problem with the methods 'construct' and 'localSearch'
     :param maxIter: Maximum number of iterations
     :param alfa: Control of the randomnes. 0 no random, 1 total random
+    :param verb: Activate verbose mode
+    :param timeLimit: Maximum amount of time to do the computations
     :return: The best solution and the best cost
     """
+    initTime = time.time()
     bestSol = None
     bestCost = math.inf
     for i in range(maxIter):
-        # print("Iteration", i)
+        if verb:
+            print("Iteration", i)
         (sol, cost) = problem.construct(alfa)
         (sol, cost) = problem.localSearch(sol)
         if cost < bestCost:
             bestSol = sol
             bestCost = cost
+
+        if (time.time() - initTime) / 1000 > timeLimit:
+            break
+
     return bestCost, bestSol
 
 
-def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count()):
+def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count(), verb=True, timeLimit=math.inf):
+    """
+    Parallel version of the GRASP algorithm
+    :param problem: An object representing an instance of a problem with the methods 'construct' and 'localSearch'
+    :param maxIter: Maximum number of iterations
+    :param alfa: Control of the randomnes. 0 no random, 1 total random
+    :param nThreads: Number of threads
+    :param verb: Activate verbose mode
+    :param timeLimit: Maximum amount of time to do the computations
+    :return: The best solution and the best cost
+    """
     with mp.Pool(nThreads) as pool:
-        # def auxGrasp(i):
-        #     return grasp(params, construct, localSearch, 1 + maxIter // nThreads, alfa)
-        # listResults = pool.map(auxGrasp, range(nThreads))
-        listResults = pool.map(partial(grasp, maxIter=1 + maxIter//nThreads, alfa=alfa), [problem]*nThreads)
+        listResults = pool.map(partial(grasp, maxIter=1 + maxIter//nThreads, alfa=alfa, verb=verb, timeLimit=timeLimit),
+                               [problem]*nThreads)
         bestResult = min(listResults)
         return bestResult
 
 
+def prova1():
+    hoursDay = 24
+    maxHours = 8
+    maxConsec = 4
+    maxPresence = 10
+    demand = [elem * (hoursDay - elem) for elem in range(hoursDay)]
+    minHours = 4
+    numNurses = 300
+
+    problem = graspNurses.GraspNurses(demand, minHours, maxHours, maxConsec, maxPresence)
+    t = time.time()
+    (bestCost, bestResult) = parallelGrasp(problem, maxIter=500)
+    print("Time:", time.time() - t)
+    print(bestCost)
+
+
 if __name__ == '__main__':
-    pass
+    prova1()
+
     # from data_generators.generator import generateFeasible2, generateFeasible1
     # from otherScripts.autoExecution import getParams
     #
