@@ -3,7 +3,7 @@
  * Author: pique
  * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
-int nHoras=24;
+int hoursDay=...;
 int nNurses=...;
 int minHours=...;
 int maxHours=...;
@@ -11,10 +11,10 @@ int maxConsec=...;
 int maxPresence=...;
 
 range N=1..nNurses;
-range H=1..nHoras;
+range H=1..hoursDay;
 int demand[d in H]=...;
 
-range StartM=1..(nHoras-maxConsec);
+range StartM=1..(hoursDay-maxConsec);
 range rangeMaxC=0..maxConsec;
 
 //Variables
@@ -60,7 +60,7 @@ subject to {
 	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)  
 		final[n]-comienzo[n] <= maxPresence;
-		//(sum(h in H)E[n,h]) - (nHoras - sum(h in H)S[n,h]) <= maxPresence;	
+		//(sum(h in H)E[n,h]) - (hoursDay - sum(h in H)S[n,h]) <= maxPresence;	
 		
 	//Constraint 6
 	forall(n in N)
@@ -70,14 +70,14 @@ subject to {
 	//Constraint 7
 	forall(n in N)
 		sum(h in H)
-	  		WH[n,h] <= Wn[n]*nHoras;	
+	  		WH[n,h] <= Wn[n]*hoursDay;	
 	  		
 	//Constraint 8
 	//No nurse can rest for more than one consecutive hour
 	forall(n in N)
 	  forall(h in H)
-		if (h < nHoras-2)
-			WH[n,h] <= (WH[n,h+1] + WH[n,h+2]) + (sum(k in ((h+3)..nHoras)) (1-WH[n,k]))/(nHoras-h-2);
+		if (h < hoursDay-2)
+			WH[n,h] <= (WH[n,h+1] + WH[n,h+2]) + (sum(k in ((h+3)..hoursDay)) (1-WH[n,k]))/(hoursDay-h-2);
 			//DJ[n,h]+DJ[n,h+1] <= WH[n,h] + WH[n,h+1]+ 1;
 		
 	//Relación S y WH	
@@ -100,18 +100,18 @@ subject to {
 	//Relación E y WH
 	//Constraint 12
 	forall(n in N)
-	  E[n,nHoras]== WH[n,nHoras];
+	  E[n,hoursDay]== WH[n,hoursDay];
 	  
 	//Constraint 13
 	forall(n in N)
 	  forall(h in H)
-	    if (h < nHoras)
+	    if (h < hoursDay)
 	    	E[n,h+1]+WH[n,h]>= E[n,h];
 	
 	//Constraint 14
 	forall(n in N)
 	  forall(h in H)
-	    if (h < nHoras)
+	    if (h < hoursDay)
 	    	E[n,h+1]+WH[n,h] <= 2*E[n,h];
 	    
 	//Relación DJ con S y E
@@ -128,7 +128,7 @@ subject to {
 	//Constraint 17
 	//Comienzo_n
 	forall(n in N)
-		comienzo[n] == nHoras - sum(h in H)S[n,h];
+		comienzo[n] == hoursDay - sum(h in H)S[n,h];
 		
 	//Constraint 18
 	//Final_n
@@ -139,7 +139,7 @@ subject to {
 
 execute {
 	for (var n=1;n<=nNurses;n++) {
-		for (var h=1; h<=nHoras; h++) {
+		for (var h=1; h<=hoursDay; h++) {
 			write("" + WH[n][h]);
  		}			
 		write('\n');

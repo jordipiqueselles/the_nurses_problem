@@ -56,7 +56,7 @@ def generateFeasible1(distrDemand):
     minHours = min((sum(nurse) for nurse in nurses))
     nNurses = len(nurses)
     params = {"minHours": minHours, "maxHours": maxHours, "maxConsec": maxConsec, "maxPresence": maxPresence,
-              "demand": demand, "nNurses": nNurses}
+              "demand": demand, "nNurses": nNurses, "hoursDay": hoursDay}
     return params, nurses
 
 
@@ -85,6 +85,7 @@ def generateFeasible2(nNurses):
     params["maxPresence"] = max(getPresenceHours(nurses))
     params["demand"] = getOffer(nurses)
     params["nNurses"] = nNurses
+    params["hoursDay"] = hoursDay
 
     return params, nurses
 
@@ -109,7 +110,7 @@ def generateRandom(distrDemand, distrMinHours, distrMaxHours, distrMaxConsec, di
     nNurses = max(demand) + 2 - rnd.randint(0, 2)
 
     return {"minHours": minHours, "maxHours": maxHours, "maxConsec": maxConsec, "maxPresence": maxPresence,
-            "demand": demand, "nNurses": nNurses}
+            "demand": demand, "nNurses": nNurses, "hoursDay": hoursDay}
 
 
 def writeParams(params, feasibility, file, cost=-1):

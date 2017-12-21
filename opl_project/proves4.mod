@@ -3,20 +3,18 @@
  * Author: pique
  * Creation Date: 24/10/2017 at 11.39.24
  *********************************************/
-int hours=...;
-int nHoras=hours;
-int numNurses=...;
-int nNurses=numNurses;
+int hoursDay=...;
+int nNurses=...;
 int minHours=...;
 int maxHours=...;
 int maxConsec=...;
 int maxPresence=...;
 
 range N=1..nNurses;
-range H=1..nHoras;
+range H=1..hoursDay;
 int demand[d in H]=...;
 
-range StartM=1..(nHoras-maxConsec);
+range StartM=1..(hoursDay-maxConsec);
 range rangeMaxC=0..maxConsec;
 
 //Variables
@@ -61,8 +59,8 @@ subject to {
 	//Constraint 5
 	//No nurse can stay at the hospital for more than maxPresence hours
 	forall(n in N)
-	  forall(h1 in (1..(nHoras - maxPresence)))
-	    forall(h2 in ((h1+maxPresence)..nHoras))
+	  forall(h1 in (1..(hoursDay - maxPresence)))
+	    forall(h2 in ((h1+maxPresence)..hoursDay))
 	      WH[n,h1] + WH[n,h2] <= 1;
 
 	//Constraint 6
@@ -73,21 +71,21 @@ subject to {
 	//Constraint 7
 	forall(n in N)
 		sum(h in H)
-	  		WH[n,h] <= Wn[n]*nHoras;
+	  		WH[n,h] <= Wn[n]*hoursDay;
 
 	//Constraint 8
 	//No nurse can rest for more than one consecutive hour
 	forall(n in N)
 	  forall(h in H)
-		if (h < nHoras-2)
-			WH[n,h] <= (WH[n,h+1] + WH[n,h+2]) + (sum(k in ((h+3)..nHoras)) (1-WH[n,k]))/(nHoras-h-2);
+		if (h < hoursDay-2)
+			WH[n,h] <= (WH[n,h+1] + WH[n,h+2]) + (sum(k in ((h+3)..hoursDay)) (1-WH[n,k]))/(hoursDay-h-2);
 			//DJ[n,h]+DJ[n,h+1] <= WH[n,h] + WH[n,h+1]+ 1;
 
 }
 
 execute {
 	for (var n=1;n<=nNurses;n++) {
-		for (var h=1; h<=nHoras; h++) {
+		for (var h=1; h<=hoursDay; h++) {
 			write("" + WH[n][h]);
  		}
 		write('\n');

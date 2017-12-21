@@ -120,8 +120,7 @@ def answerSatisfiesConstr(nurses, params):
     maxConsec = params["maxConsec"]
     maxPresence = params["maxPresence"]
     demand = params["demand"]
-    # nNurses = params["nNurses"]
-    nNurses = params["numNurses"]
+    nNurses = params["nNurses"]
 
     # check we've used less than the maximum number of nurses
     constrNNurses = len(nurses) <= nNurses

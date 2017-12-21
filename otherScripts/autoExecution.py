@@ -1,9 +1,10 @@
 import os
+import sys
 import time
 import subprocess
 import math
 from otherScripts.checkingFunctions import *
-from metaheuristicas import grasp, graspNurses
+from metaheuristicas import grasp, graspNurses, brkga
 
 
 class bcolors:
@@ -66,31 +67,59 @@ def getSolution(strSolution):
         return retVal
 
 
-def executeOpl(pathToDat, solverParams):
+def executeOpl(pathToDat, maxTime, solverParams):
+    pathToOPL = solverParams['pathToOPL']
+    pathToMod = solverParams['pathToMod']
+    configName = "ConfigForPython"
+
+    with open(".oplproject", 'w') as f:
+        f.write("""<?xml version="1.0" encoding="ASCII"?><project>
+<version>1.0</version>
+    <configs>
+		<config default="true" name=""" + '"' + configName + '"' + """ category="opl">
+			<ref name=""" + '"' + pathToMod + '"' + """ type="model">
+            </ref>
+            <ref name="./opl_project.ops" type="setting">
+            </ref>
+            <ref name=""" + '"' + pathToDat + '"' + """ type="data">
+            </ref>
+        </config>
+    </configs>
+</project>""")
+
+    maxMemory = solverParams['maxMemory']
+
+    with open("opl_project.ops", 'w') as f:
+        f.write("""<?xml version="1.0" encoding="UTF-8"?>
+<settings version="2">
+  <category name="cplex">
+    <setting name="tilim" value=""" + '"' + str(maxTime) + '"' + """/>
+    <setting name="workmem" value=""" + '"' + str(maxMemory) + '"' + """/>
+  </category>
+</settings>""")
+
     try:
-        result = subprocess.check_output(pathToOPL + " " + pathToMod + " " + pathToDat, shell=True)
+        # result = subprocess.check_output(pathToOPL + " " + pathToMod + " " + pathToDat, shell=True)
+        result = subprocess.check_output(pathToOPL + ' -p "." ' + configName, shell=True)
     except subprocess.CalledProcessError:
         # no solution
         return -1, []
 
     result = result.decode("utf-8")
-    print(result)
+    # print(result)
     nurses = getSolution(result)
     cost = sum(sum(nurse) > 0 for nurse in nurses)
     return cost, nurses
 
 
-def executeGrasp(pathToDat, solverParams):
+def executeGrasp(pathToDat, maxTime, solverParams):
     params = getParams(pathToDat)
     problem = graspNurses.GraspNurses(params['demand'], params['minHours'], params['maxHours'], params['maxConsec'],
                                       params['maxPresence'])
     numIter = solverParams['numIter']
     alfa = solverParams['alfa']
-    parallel = solverParams['parallel']
-    if parallel:
-        (cost, sol) = grasp.parallelGrasp(problem, numIter, alfa)
-    else:
-        (cost, sol) = grasp.grasp(problem, numIter, alfa)
+    nThreads = solverParams['nThreads']
+    (cost, sol) = grasp.parallelGrasp(problem, numIter, alfa, nThreads, maxTime)
 
     if cost <= params['nNurses']:
         return cost, sol
@@ -98,16 +127,32 @@ def executeGrasp(pathToDat, solverParams):
         return -1, []
 
 
-def executeBrkga(pathToDat, solverParams):
-    pass
+def executeBrkga(pathToDat, maxTime, solverParams):
+    params = getParams(pathToDat)
+    chrLen = brkga.getChrLength(params)
+    numIndividuals = solverParams['numIndividuals']
+    maxGenerations = solverParams['maxGenerations']
+    eliteProp = solverParams['eliteProp']
+    mutantsProp = solverParams['mutantsProp']
+    inheritanceProp = solverParams['inheritanceProb']
+
+    solver = brkga.Brkga(brkga.decode)
+    solution = solver.run(params, chrLen, numIndividuals, maxGenerations, eliteProp,
+                          mutantsProp, inheritanceProp, maxTime)
+
+    if solution['fitness'] <= params['nNurses']:
+        return solution['fitness'], solution['solution']
+    else:
+        return -1, []
 
 
-def executeSolver(datFolder, solver, solverParams):
+def executeSolver(datFolder, solver, maxTime, solverParams):
     """
     Executes all the files in the datFolder and prints the time consumed, the cost and checks several constraints in
     order to be sure the opl program works correctly
     :param datFolder: Folder with the .dat files
     :param solver:
+    :param maxTime:
     :param solverParams:
     """
     listDat = list(filter(lambda f: len(f) > 5 and f[-4:] == ".dat", os.listdir(datFolder)))
@@ -117,7 +162,7 @@ def executeSolver(datFolder, solver, solverParams):
         pathToDat = datFolder + file
 
         t = time.time()
-        (cost, sol) = solver(pathToDat, solverParams)
+        (cost, sol) = solver(pathToDat, maxTime, solverParams)
         t = time.time() - t
         print("Time:", round(t, 2), "s")
 
@@ -146,22 +191,41 @@ def executeSolver(datFolder, solver, solverParams):
                 print(bcolors.OKGREEN + "OK" + bcolors.ENDC)
             else:
                 print(bcolors.FAIL + "FAIL" + bcolors.ENDC)
-            # print(result)
         print()
 
 
 if __name__ == '__main__':
-    # PATHS
-    pathToOPL = '"C:\Program Files\IBM\ILOG\CPLEX_Studio1271\opl\\bin\\x64_win64\oplrun.exe"'
-    pathToOps = "../opl_project/opl_project.ops"
-    pathToMod = "../opl_project/proves4.mod"
+    # Parameters for the solvers
+    oplParams = {'pathToOPL': '"C:\Program Files\IBM\ILOG\CPLEX_Studio1271\opl\\bin\\x64_win64\oplrun.exe"',
+                 'pathToMod': "../opl_project/proves4.mod",
+                 'maxMemory': 12000}
 
+    graspParams = {'numIter': 50,
+                   'alfa': 0.1,
+                   'nThreads': 8}
+
+    brkgaParams = {'numIndividuals': 100,
+                   'maxGenerations': 100,
+                   'eliteProp': 0.1,
+                   'mutantsProp': 0.2,
+                   'inheritanceProb': 0.7}
+
+    # Data folders
     manuallyGeneratedData = "../data_generators/manuallyGeneratedData/"
     autoGeneratedData = "../data_generators/autoGeneratedData/"
     benchmark = "C:\\Users\pique\Downloads\\benchmark\\"
-    graspParams = {'numIter': 50, 'alfa': 0.1, 'parallel': True}
-    # executeSolver(autoGeneratedData, executeGrasp, graspParams)
-    executeSolver(benchmark, executeOpl, None)
 
-    # import os
+    # Max time (seconds) for solving one instance
+    maxTime = 200
+
+    # verbose
+    sys.argv += ['-v']
+    if '-v' in sys.argv:
+        nullFile = open('nul', 'w')
+        sys.stderr = nullFile
+
+    executeSolver(autoGeneratedData, executeGrasp, maxTime, graspParams)
+    # executeSolver(autoGeneratedData, executeBrkga, maxTime, brkgaParams)
+    # executeSolver(autoGeneratedData, executeOpl, maxTime, oplParams)
+
     # os.system("shutdown.exe /h")

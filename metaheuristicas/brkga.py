@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import logging
 import time
 from otherScripts.checkingFunctions import *
+from otherScripts.utils import eprint
 
 
 class Brkga:
@@ -15,17 +16,16 @@ class Brkga:
         self.population = []
 
     def run(self, data, chrLength, numIndividuals=100, maxGenerations=100, eliteProp=0.1, mutantsProp=0.2,
-            inheritanceProp=0.7, verb=True, timeLimit=math.inf):
+            inheritanceProb=0.7, timeLimit=math.inf):
         """
-
+        Executes the BRKGA algorithm
         :param data: Data defining the problem. It's a dictionary of parameters.
         :param chrLength: Length of the chromosome for an individual
         :param numIndividuals: Number of individuals in the population
         :param maxGenerations: Maximum number of generations
         :param eliteProp: Proportion of individuals that will belong to the elite segment
         :param mutantsProp: Proportion of mutants generated at each iteration
-        :param inheritanceProp: Probability of inheriting from an elite individual
-        :param verb: Activate verbose mode (and plot)
+        :param inheritanceProb: Probability of inheriting from an elite individual
         :param timeLimit: Maximum amount of time to do the computations
         :return: The best individual found
         """
@@ -43,12 +43,11 @@ class Brkga:
         for i in range(maxGenerations):
             self.population = self.decode(self.population, data)
             evol.append(self._getBestFitness()['fitness'])
-            if verb:
-                print("Generation", i, "| MaxFitness", evol[-1])
+            eprint("Generation", i, "| MaxFitness", evol[-1])
 
             elite, nonelite = self._classifyIndividuals(numElite)
             mutants = self._generateMutantIndividuals(numMutants, chrLength)
-            crossover = self._doCrossover(elite, nonelite, inheritanceProp, numCrossover)
+            crossover = self._doCrossover(elite, nonelite, inheritanceProb, numCrossover)
             self.population = elite + crossover + mutants
 
             if (time.time() - initTime) / 1000 > timeLimit:
@@ -57,14 +56,13 @@ class Brkga:
         self.population = self.decode(self.population, data)
         bestIndividual = self._getBestFitness()
 
-        if verb:
-            plt.plot(evol)
-            plt.xlabel('number of generations')
-            plt.ylabel('Fitness of best individual')
-            plt.axis([0, len(evol), 0, (chrLength + 1) * chrLength / 2])
-            plt.show()
+        # plt.plot(evol)
+        # plt.xlabel('number of generations')
+        # plt.ylabel('Fitness of best individual')
+        # plt.axis([0, len(evol), 0, (chrLength + 1) * chrLength / 2])
+        # plt.show()
 
-            print(bestIndividual)
+        eprint("Best individual:", bestIndividual)
 
         return bestIndividual
 
@@ -134,7 +132,7 @@ class Brkga:
 
     def _getBestFitness(self):
         """
-        :return: The fitness of the best individual in the population
+        :return: The best individual in the population
         """
         bestFit = min(self.population, key=lambda x: x['fitness'])
         return bestFit
@@ -150,24 +148,23 @@ def getChrLength(params):
     maxNumGroupConsecH = min(params['maxPresence'] - params['maxHours'] + 1, params['maxHours']*2 - 1)
     # Length of an encoded nurse
     legthEncodedNurse = maxNumGroupConsecH + 2
-    return params['numNurses'] * legthEncodedNurse
+    return params['nNurses'] * legthEncodedNurse
 
 
-def decode(population, params, verbose=False):
+def decode(population, params):
     """
     Deocder for the nurses optimization problem
     :param population: [{'chr': chromosome, ...}, {...}, ...]
-    :param params: Dictionary with hoursDay, minHours, maxHours, maxConsec, maxPresence, demand and numNurses
-    :param verbose: Activate verbose mode
+    :param params: Dictionary with hoursDay, minHours, maxHours, maxConsec, maxPresence, demand and nNurses
     :return: [{'chr': chromosome, 'solution': solution, 'fitness': fitness}, ...]
     """
     hoursDay = params['hoursDay']
-    minHours = params["minHours"]
+    # minHours = params["minHours"]
     maxHours = params["maxHours"]
     maxConsec = params["maxConsec"]
     maxPresence = params["maxPresence"]
     demand = params["demand"]
-    numNurses = params['numNurses']
+    nNurses = params['nNurses']
 
     # Sometimes it's impossible to work exactly maxHours
     maxHours = min(maxHours, maxPresence - maxPresence//maxConsec)
@@ -223,18 +220,16 @@ def decode(population, params, verbose=False):
                     nurse += [1] * chunk + [0]
             nurse += [0] * hoursDay
             nurse = nurse[:hoursDay]
-            if verbose:
-                print(nurse, sum(nurse))
+            # print(nurse, sum(nurse))
             nurses.append(nurse)
 
-        if verbose:
-            print()
+        # print()
 
         # calculate the dictionary we'll add to listSolutions
         nWorkNurses = sum(sum(n) > 0 for n in nurses)
         offer = getOffer(nurses)
         uncovDemand = sum(max(0, demand[i] - offer[i]) for i in range(len(demand)))
-        solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*numNurses + nWorkNurses}
+        solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*(nNurses+1) + nWorkNurses}
         listSolutions.append(solution)
 
     return listSolutions
@@ -248,13 +243,13 @@ def proves():
     params["maxPresence"] = 23
     params["demand"] = [0] * params['hoursDay']
     params["minHours"] = 4
-    params['numNurses'] = 100
+    params['nNurses'] = 100
 
     lenChr = getChrLength(params)
     ind = dict()
     ind['chr'] = np.random.rand(lenChr)
 
-    listNurses = decode([ind], params, verbose=True)
+    listNurses = decode([ind], params)
     for elem in listNurses:
         nurses = elem['solution']
         print(answerSatisfiesConstr(nurses, params))
@@ -269,7 +264,7 @@ def proves2():
     params["maxPresence"] = 10
     params["demand"] = [elem*(params['hoursDay'] - elem) for elem in range(params['hoursDay'])]
     params["minHours"] = 4
-    params['numNurses'] = 300
+    params['nNurses'] = 300
 
     solver = Brkga(decode)
     solution = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=300)
