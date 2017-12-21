@@ -50,7 +50,7 @@ class Brkga:
             crossover = self._doCrossover(elite, nonelite, inheritanceProb, numCrossover)
             self.population = elite + crossover + mutants
 
-            if (time.time() - initTime) / 1000 > timeLimit:
+            if time.time() - initTime > timeLimit:
                 break
 
         self.population = self.decode(self.population, data)

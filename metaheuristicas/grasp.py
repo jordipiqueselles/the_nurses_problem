@@ -26,7 +26,7 @@ def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf):
             bestSol = sol
             bestCost = cost
 
-        if (time.time() - initTime) / 1000 > timeLimit:
+        if time.time() - initTime > timeLimit:
             break
 
     return bestCost, bestSol
