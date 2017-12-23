@@ -6,7 +6,7 @@ import metaheuristicas.graspNurses as graspNurses
 from otherScripts.utils import eprint
 
 
-def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf):
+def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf, maxItWithoutImpr=30):
     """
     General GRASP algorithm
     :param problem: An object representing an instance of a problem with the methods 'construct' and 'localSearch'
@@ -18,21 +18,25 @@ def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf):
     initTime = time.time()
     bestSol = None
     bestCost = math.inf
+    itWithoutImpr = 0
     for i in range(maxIter):
-        eprint("Iteration", i)
         (sol, cost) = problem.construct(alfa)
         (sol, cost) = problem.localSearch(sol)
+        eprint("Iteration:", i, "| Best cost:", bestCost)
         if cost < bestCost:
             bestSol = sol
             bestCost = cost
+            itWithoutImpr = 0
+        else:
+            itWithoutImpr += 1
 
-        if time.time() - initTime > timeLimit:
+        if time.time() - initTime > timeLimit or itWithoutImpr > maxItWithoutImpr:
             break
 
     return bestCost, bestSol
 
 
-def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count(), timeLimit=math.inf):
+def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count(), timeLimit=math.inf, maxItWithoutImpr=30):
     """
     Parallel version of the GRASP algorithm
     :param problem: An object representing an instance of a problem with the methods 'construct' and 'localSearch'
@@ -43,8 +47,8 @@ def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count(), timeLi
     :return: The best solution and the best cost
     """
     with mp.Pool(nThreads) as pool:
-        listResults = pool.map(partial(grasp, maxIter=1 + maxIter//nThreads, alfa=alfa, timeLimit=timeLimit),
-                               [problem]*nThreads)
+        listResults = pool.map(partial(grasp, maxIter=1 + maxIter//nThreads, alfa=alfa, timeLimit=timeLimit,
+                                       maxItWithoutImpr=maxItWithoutImpr), [problem]*nThreads)
         bestResult = min(listResults)
         return bestResult
 

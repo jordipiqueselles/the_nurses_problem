@@ -1,6 +1,6 @@
 import sys
 
-if '-v' in sys.argv:
+if '-v' not in sys.argv:
     nullFile = open('nul', 'w')
     sys.stderr = nullFile
 

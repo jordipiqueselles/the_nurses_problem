@@ -16,7 +16,7 @@ class Brkga:
         self.population = []
 
     def run(self, data, chrLength, numIndividuals=100, maxGenerations=100, eliteProp=0.1, mutantsProp=0.2,
-            inheritanceProb=0.7, timeLimit=math.inf):
+            inheritanceProb=0.7, timeLimit=math.inf, maxItWithoutImpr=50):
         """
         Executes the BRKGA algorithm
         :param data: Data defining the problem. It's a dictionary of parameters.
@@ -38,19 +38,24 @@ class Brkga:
         numCrossover = max(numIndividuals - numElite - numMutants, 0)
 
         self.population = self._initializePopulation(numIndividuals, chrLength)
-        evol = []
+        evol = [math.inf]
+        itWithoutImpr = 0
 
         for i in range(maxGenerations):
             self.population = self.decode(self.population, data)
             evol.append(self._getBestFitness()['fitness'])
             eprint("Generation", i, "| MaxFitness", evol[-1])
+            if evol[-2] > evol[-1]:
+                itWithoutImpr = 0
+            else:
+                itWithoutImpr += 1
 
             elite, nonelite = self._classifyIndividuals(numElite)
             mutants = self._generateMutantIndividuals(numMutants, chrLength)
             crossover = self._doCrossover(elite, nonelite, inheritanceProb, numCrossover)
             self.population = elite + crossover + mutants
 
-            if time.time() - initTime > timeLimit:
+            if time.time() - initTime > timeLimit or itWithoutImpr > maxItWithoutImpr:
                 break
 
         self.population = self.decode(self.population, data)

@@ -79,13 +79,13 @@ def generateFeasible2(nNurses):
         nurses.append(nurse)
 
     params = {}
+    params["hoursDay"] = hoursDay
     params["minHours"] = min(getNursesHours(nurses))
     params["maxHours"] = max(getNursesHours(nurses))
     params["maxConsec"] = max(getConsecHours(nurses))
     params["maxPresence"] = max(getPresenceHours(nurses))
     params["demand"] = getOffer(nurses)
     params["nNurses"] = nNurses
-    params["hoursDay"] = hoursDay
 
     return params, nurses
 
@@ -109,8 +109,8 @@ def generateRandom(distrDemand, distrMinHours, distrMaxHours, distrMaxConsec, di
     demand = [distrDemand.__next__() for _ in range(hoursDay)]
     nNurses = max(demand) + 2 - rnd.randint(0, 2)
 
-    return {"minHours": minHours, "maxHours": maxHours, "maxConsec": maxConsec, "maxPresence": maxPresence,
-            "demand": demand, "nNurses": nNurses, "hoursDay": hoursDay}
+    return {"hoursDay": hoursDay, "minHours": minHours, "maxHours": maxHours, "maxConsec": maxConsec, "maxPresence": maxPresence,
+            "demand": demand, "nNurses": nNurses}
 
 
 def writeParams(params, feasibility, file, cost=-1):
@@ -124,7 +124,7 @@ def writeParams(params, feasibility, file, cost=-1):
         print("// " + feasibility, file=f)
         if cost > 0:
             print("// " + "COST " + str(cost), file=f)
-        for key in params:
+        for key in sorted(params.keys(), reverse=True):
             print(key + "=" + str(params[key]).replace(",", "") + ";", file=f)
 
 
@@ -134,15 +134,15 @@ if __name__ == '__main__':
     distrMaxHours = (int(rnd.gauss(10, 1)) for _ in ittl.count())
     distrMaxConsec = (int(rnd.gauss(6, 1)) for _ in ittl.count())
     distrMaxPresence = (int(rnd.gauss(12, 1)) for _ in ittl.count())
-    distrDemand = (int(rnd.gauss(80, 5)) for _ in ittl.count())
 
-    nInstFeasible = 10 # number of feasible instances we want to generate
+    nInstFeasible = 50 # number of feasible instances we want to generate
     # listFeasibleGenerators = [generateFeasible1, generateFeasible2]
-    whichFeasible = 2
+    whichFeasible = 1
     for i in range(nInstFeasible):
         # using generateFeasible1
         if whichFeasible == 1:
             name = "feasible1_" + str(i+1) + ".dat"
+            distrDemand = (int(rnd.gauss(20*i+100, 5)) for _ in ittl.count())
             (params, nurses) = generateFeasible1(distrDemand)
         # using generateFeasible2
         elif whichFeasible == 2:

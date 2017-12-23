@@ -1,0 +1,9 @@
+// FEASIBLE
+// COST 1446
+nNurses=1446;
+minHours=2;
+maxPresence=12;
+maxHours=10;
+maxConsec=6;
+hoursDay=24;
+demand=[487 474 474 480 489 479 480 483 475 485 488 475 468 470 478 478 479 478 475 477 476 492 481 478];
