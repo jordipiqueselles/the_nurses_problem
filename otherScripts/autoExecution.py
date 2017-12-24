@@ -184,7 +184,7 @@ def executeSolver(datFolder, solver, maxTime, solverParams, fileName=None):
 
     listDat = list(filter(lambda f: len(f) > 5 and f[-4:] == ".dat", os.listdir(datFolder)))
     listDat.sort(key=lambda f: len(f))
-    for (i, file) in enumerate(listDat[27:30]):
+    for (i, file) in enumerate(listDat[29:]):
         print(bcolors.BOLD + str(i+1) + "/" + str(len(listDat)) + " (" + solver.__name__ + ")" + bcolors.ENDC)
         print(bcolors.BOLD + "Executing", file, bcolors.ENDC)
         pathToDat = datFolder + file
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     benchmark = "C:\\Users\pique\Downloads\\benchmark\\"
 
     # Max time (seconds) for solving one instance
-    maxTime = 20*60
+    maxTime = 5*60
 
     # verbose
     # sys.argv += ['-v']
