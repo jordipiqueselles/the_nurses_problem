@@ -223,9 +223,7 @@ def decode(population, params):
             for chunk in chunksHours:
                 if chunk != 0:
                     nurse += [1] * chunk + [0]
-            nurse += [0] * hoursDay
-            nurse = nurse[:hoursDay]
-            # print(nurse, sum(nurse))
+            nurse += [0] * (hoursDay-len(nurse))
             nurses.append(nurse)
 
         # print()
