@@ -3,7 +3,7 @@ import sys
 import multiprocessing as mp
 import math
 
-if '-v' not in sys.argv:
+if '-v' not in sys.argv and False:
     nullFile = open('nul', 'w')
     sys.stderr = nullFile
 

@@ -44,7 +44,11 @@ class Brkga:
         for i in range(maxGenerations):
             self.population = self.decode(self.population, data)
             evol.append(self._getBestFitness()['fitness'])
-            eprint("Generation", i, "| MaxFitness", evol[-1])
+
+            offer = getOffer(self._getBestFitness()['solution'])
+            diff = [offer[j] - data['demand'][j] for j in range(len(data['demand']))]
+
+            eprint("Generation", i, "| MaxFitness", evol[-1], "| Diff:", diff)
             if evol[-2] > evol[-1]:
                 itWithoutImpr = 0
             else:
@@ -69,7 +73,9 @@ class Brkga:
 
         eprint("Best individual:", bestIndividual)
 
-        return bestIndividual
+        bestSolution = bestIndividual['solution']
+        bestCost = sum(sum(nurse) != 0 for nurse in bestSolution)
+        return bestCost, bestSolution
 
     @staticmethod
     def _initializePopulation(numIndividuals, chrLength):
@@ -189,9 +195,12 @@ def decode(population, params):
             # q = min(qMax, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))))
             encodedNurse = encodedSetNurses[i:i+maxLenEncNurse]
             works = encodedNurse[0] >= 0.5  # if the nurse works
-            initHour = int(round(encodedNurse[1] * lastInitHour, 0))  # the hour she starts working
-            lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour)/maxConsec)) + 2)
+            initHour = int(encodedNurse[1] * (lastInitHour+1))  # the hour she starts working
+            # assert 0 <= initHour <= lastInitHour
+            lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour + 1)/(maxConsec + 1))) + 2)
             encConsecHours = encodedNurse[2:lenEncNurse]  # the chunks of consecutive hours encoded
+            # assert hoursDay - initHour >= maxHours + (len(encConsecHours) - 1)
+            # assert maxHours <= len(encConsecHours) * maxConsec
             workedHours = maxHours  # number of hours the nurse works
             s = sum(encConsecHours)
             normEncodedNurse = [x/s for x in encConsecHours]
@@ -220,10 +229,10 @@ def decode(population, params):
 
             # Construct the nurse
             nurse = [0] * initHour
-            for chunk in chunksHours:
-                if chunk != 0:
-                    nurse += [1] * chunk + [0]
+            for (j, chunk) in enumerate(filter(lambda x: x != 0, chunksHours)):
+                nurse += [0]*(j != 0) + [1] * chunk
             nurse += [0] * (hoursDay-len(nurse))
+            # assert len(nurse) == hoursDay
             nurses.append(nurse)
 
         # print()
@@ -232,7 +241,13 @@ def decode(population, params):
         nWorkNurses = sum(sum(n) > 0 for n in nurses)
         offer = getOffer(nurses)
         uncovDemand = sum(max(0, demand[i] - offer[i]) for i in range(len(demand)))
-        solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*(nNurses+1) + nWorkNurses}
+        extraOffer = sum((offer[i] - demand[i])**2 for i in range(len(demand)) if offer[i] > demand[i] + 1)
+        exactDemandOffer = sum(offer[i] - demand[i] == 0 for i in range(len(demand)))
+        # solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*nNurses + nWorkNurses}
+        # solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*nNurses + extraOffer + nWorkNurses}
+        solution = {'chr': encodedSetNurses, 'solution': nurses, 'fitness': uncovDemand*nNurses**2 + extraOffer + nWorkNurses}
+        # solution = {'chr': encodedSetNurses, 'solution': nurses,
+        #             'fitness': uncovDemand*(nNurses+2) + (nWorkNurses + exactDemandOffer/hoursDay)*(uncovDemand == 0)}
         listSolutions.append(solution)
 
     return listSolutions
@@ -260,6 +275,7 @@ def proves():
 
 
 def proves2():
+    # best cost -> 288
     params = dict()
     params['hoursDay'] = 24
     params["maxHours"] = 8
@@ -267,11 +283,10 @@ def proves2():
     params["maxPresence"] = 10
     params["demand"] = [elem*(params['hoursDay'] - elem) for elem in range(params['hoursDay'])]
     params["minHours"] = 4
-    params['nNurses'] = 300
+    params['nNurses'] = 350
 
     solver = Brkga(decode)
-    solution = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=300)
-    nurses = solution['solution']
+    (cost, nurses) = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=50, maxItWithoutImpr=100)
 
     for nurse in nurses:
         print(nurse)
@@ -279,6 +294,7 @@ def proves2():
     print(answerSatisfiesConstr(nurses, params))
     print(params['demand'])
     print(getOffer(nurses))
+    print("Cost:", cost)
 
 
 if __name__ == '__main__':

@@ -2,7 +2,6 @@
 
 <settings version="2">
   <category name="cplex">
-    <setting name="tilim" value="5.0"/>
     <setting name="workmem" value="12000.0"/>
   </category>
 </settings>
