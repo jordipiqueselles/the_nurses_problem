@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import logging
 import time
+import itertools as ittls
 from otherScripts.checkingFunctions import *
 from otherScripts.utils import eprint
 
@@ -162,29 +163,50 @@ def getChrLength(params):
     return params['nNurses'] * legthEncodedNurse
 
 
-def createProportionDemand(demand, maxPresence):
-    prop = [0] * len(demand)
-    for i in range(len(demand)//2):
-        for j in range(maxPresence):
-            prop[i+j] += 1
-            prop[len(demand)-i-1 - j] += 1
-    print(prop)
-    auxDemand = [round(demand[i] / prop[i], 1) for i in range(len(demand))]
-    print(auxDemand)
-    sumAuxDemand = auxDemand + []
-    for i in range(len(auxDemand)//2):
-        sumAuxDemand[i] = sum(auxDemand[i:i+maxPresence])
-        sumAuxDemand[len(auxDemand)-i-1] = sum(auxDemand[len(auxDemand)-i-maxPresence:len(auxDemand)-i])
+def createProportionDemand(demand, maxPresence, lastInitHour):
+    l = len(demand)
+    prop = [0] * l
+    for i in range(lastInitHour):
+        for j in range(i, min(i+maxPresence,l)):
+            prop[j] += 1
+            prop[l-1-j] += 1
 
-    sumAuxDemand = [round(elem, 1) for elem in sumAuxDemand]
-    sumIni = sum(auxDemand[:12])
-    sumFi = sum(auxDemand[12:])
+    # print(prop)
+    option = 3
+
+    if option == 0:
+        sumDemand = [0] * l
+        for i in range(lastInitHour):
+            sumDemand[i] = sum(demand[i:min(l,i+maxPresence)])
+            sumDemand[l-i-1] = sum(demand[max(0,l-i-maxPresence):l-i])
+        # print(sumDemand)
+        sumAuxDemand = [sumDemand[i] / prop[i] for i in range(l)]
+
+    elif option == 1:
+        auxDemand = [demand[i] / prop[i] for i in range(l)]
+        # print(auxDemand)
+        sumAuxDemand = [0] * l
+        for i in range(lastInitHour):
+            sumAuxDemand[i] = sum(auxDemand[i:min(l,i+maxPresence)])
+            sumAuxDemand[l-i-1] = sum(auxDemand[max(0,l-i-maxPresence):l-i])
+
+    else:
+        sumAuxDemand = [demand[i] / prop[i] for i in range(l)]
+
+    sumIni = sum(sumAuxDemand[:(l+1)//2])
+    sumFi = sum(sumAuxDemand[(l+1)//2:])
+    # print([round(elem/sumIni, 2) for elem in sumAuxDemand[:(l+1)//2]] + [round(elem/sumFi, 2) for elem in sumAuxDemand[(l+1)//2:]])
+    for i in range(1, (l+1)//2):
+        sumAuxDemand[i] += sumAuxDemand[i-1]
+        sumAuxDemand[l-i-1] += sumAuxDemand[l-i]
+    sumAuxDemand = [elem/sumIni for elem in sumAuxDemand[:(l+1)//2]] + [elem/sumFi for elem in sumAuxDemand[(l+1)//2:]]
+    # print(sumAuxDemand)
     return sumIni, sumFi, sumAuxDemand
 
 def proves3():
     demand = [5, 3, 3, 3, 4, 4, 7, 10, 13, 22, 38, 48, 48, 48, 26, 0, 8, 6, 12, 4, 13, 10, 11, 14]
-    maxPresence = 10
-    prop = createProportionDemand(demand, maxPresence)
+    maxPresence = 18
+    prop = createProportionDemand(demand, maxPresence, 10)
     print(prop)
 
 def decode(population, params):
@@ -210,7 +232,11 @@ def decode(population, params):
     maxLenEncNurse = maxNumGroupConsecH + 2
     # Last hour when the working day of a nurse can start
     # lastInitHour = hoursDay - maxPresence
-    lastInitHour = hoursDay - maxHours - math.ceil(maxHours/maxConsec) + 1
+    lastInitHour = min((hoursDay+1)//2, hoursDay - maxHours - math.ceil(maxHours/maxConsec) + 1 + 1)
+
+    # meanLenWorkingDay = maxHours + math.ceil(maxHours/maxConsec) - 1
+    (sumIni, sumFi, sumAuxDemand) = createProportionDemand(demand, maxPresence, lastInitHour)
+    propHalf = sumIni / (sumIni + sumFi)
 
     listSolutions = []
     populationChr = (ind['chr'] for ind in population)
@@ -221,10 +247,14 @@ def decode(population, params):
             encodedNurse = encodedSetNurses[i:i+maxLenEncNurse]
             works = encodedNurse[0] >= 0.3  # if the nurse works
 
-            revers = encodedNurse[1] > 0.5 # the nurse is reversed
-            (sumIni, sumFi, sumAuxDemand) = createProportionDemand(demand, maxPresence)
-            encInitHour = ((encodedNurse[1] - 0.5 * revers)**6 / 0.5**6) / 2
-            initHour = int(encInitHour * (lastInitHour+1))  # the hour she starts working
+            revers = encodedNurse[1] > propHalf # the nurse is reversed
+            if not revers:
+                prob = encodedNurse[1] / propHalf
+                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(sumAuxDemand)).__next__()[0]  # the hour she starts working
+            else:
+                prob = (encodedNurse[1]-propHalf) / (1-propHalf)
+                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(reversed(sumAuxDemand))).__next__()[0]   # the hour she starts working
+
             # assert 0 <= initHour <= lastInitHour
             lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour + 1)/(maxConsec + 1))) + 2)
             encConsecHours = encodedNurse[2:lenEncNurse]  # the chunks of consecutive hours encoded
@@ -314,10 +344,12 @@ def proves2():
     params["maxPresence"] = 10
     params["demand"] = [elem*(params['hoursDay'] - elem) for elem in range(params['hoursDay'])]
     params["minHours"] = 4
-    params['nNurses'] = 350
+    params['nNurses'] = 300
+
+    print(params['demand'])
 
     solver = Brkga(decode)
-    (cost, nurses) = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=50, maxItWithoutImpr=100)
+    (cost, nurses) = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=200, maxItWithoutImpr=100)
 
     for nurse in nurses:
         print(nurse)
@@ -332,4 +364,4 @@ if __name__ == '__main__':
     # logging.basicConfig(level=logging.DEBUG)
     # logging.debug('hola')
     # logging.info('adeu')
-    proves3()
+    proves2()
