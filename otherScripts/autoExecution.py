@@ -240,7 +240,7 @@ if __name__ == '__main__':
                    'maxItWithoutImpr': 300000}
 
     brkgaParams = {'numIndividuals': 200,
-                   'maxGenerations': 50000,
+                   'maxGenerations': 200,
                    'eliteProp': 0.1,
                    'mutantsProp': 0.2,
                    'inheritanceProb': 0.7,
@@ -252,7 +252,7 @@ if __name__ == '__main__':
     benchmark = "C:\\Users\pique\Downloads\\benchmark\\"
 
     # Max time (seconds) for solving one instance
-    maxTime = 50*60
+    maxTime = 5*60
 
     # verbose
     sys.argv += ['-v']

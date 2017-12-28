@@ -162,6 +162,31 @@ def getChrLength(params):
     return params['nNurses'] * legthEncodedNurse
 
 
+def createProportionDemand(demand, maxPresence):
+    prop = [0] * len(demand)
+    for i in range(len(demand)//2):
+        for j in range(maxPresence):
+            prop[i+j] += 1
+            prop[len(demand)-i-1 - j] += 1
+    print(prop)
+    auxDemand = [round(demand[i] / prop[i], 1) for i in range(len(demand))]
+    print(auxDemand)
+    sumAuxDemand = auxDemand + []
+    for i in range(len(auxDemand)//2):
+        sumAuxDemand[i] = sum(auxDemand[i:i+maxPresence])
+        sumAuxDemand[len(auxDemand)-i-1] = sum(auxDemand[len(auxDemand)-i-maxPresence:len(auxDemand)-i])
+
+    sumAuxDemand = [round(elem, 1) for elem in sumAuxDemand]
+    sumIni = sum(auxDemand[:12])
+    sumFi = sum(auxDemand[12:])
+    return sumIni, sumFi, sumAuxDemand
+
+def proves3():
+    demand = [5, 3, 3, 3, 4, 4, 7, 10, 13, 22, 38, 48, 48, 48, 26, 0, 8, 6, 12, 4, 13, 10, 11, 14]
+    maxPresence = 10
+    prop = createProportionDemand(demand, maxPresence)
+    print(prop)
+
 def decode(population, params):
     """
     Deocder for the nurses optimization problem
@@ -178,7 +203,7 @@ def decode(population, params):
     nNurses = params['nNurses']
 
     # Sometimes it's impossible to work exactly maxHours
-    maxHours = min(maxHours, maxPresence - maxPresence//maxConsec)
+    maxHours = int(min(maxHours, maxPresence - math.ceil(maxPresence/maxConsec) + 1))
     # Max number of groups of consecutive working hours
     maxNumGroupConsecH = min(maxPresence - maxHours + 1, maxHours*2 - 1)
     # Max length of an encoded nurse
@@ -194,8 +219,12 @@ def decode(population, params):
         for i in range(0, len(encodedSetNurses), maxLenEncNurse):
             # q = min(qMax, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))))
             encodedNurse = encodedSetNurses[i:i+maxLenEncNurse]
-            works = encodedNurse[0] >= 0.5  # if the nurse works
-            initHour = int(encodedNurse[1] * (lastInitHour+1))  # the hour she starts working
+            works = encodedNurse[0] >= 0.3  # if the nurse works
+
+            revers = encodedNurse[1] > 0.5 # the nurse is reversed
+            (sumIni, sumFi, sumAuxDemand) = createProportionDemand(demand, maxPresence)
+            encInitHour = ((encodedNurse[1] - 0.5 * revers)**6 / 0.5**6) / 2
+            initHour = int(encInitHour * (lastInitHour+1))  # the hour she starts working
             # assert 0 <= initHour <= lastInitHour
             lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour + 1)/(maxConsec + 1))) + 2)
             encConsecHours = encodedNurse[2:lenEncNurse]  # the chunks of consecutive hours encoded
@@ -232,6 +261,8 @@ def decode(population, params):
             for (j, chunk) in enumerate(filter(lambda x: x != 0, chunksHours)):
                 nurse += [0]*(j != 0) + [1] * chunk
             nurse += [0] * (hoursDay-len(nurse))
+            if revers:
+                nurse.reverse()
             # assert len(nurse) == hoursDay
             nurses.append(nurse)
 
@@ -301,4 +332,4 @@ if __name__ == '__main__':
     # logging.basicConfig(level=logging.DEBUG)
     # logging.debug('hola')
     # logging.info('adeu')
-    proves2()
+    proves3()
