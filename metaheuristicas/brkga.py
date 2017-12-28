@@ -156,11 +156,17 @@ def getChrLength(params):
     :param params: Parameters defining an instance of the nurses problem
     :return: The length of the chromosome
     """
+    maxHours = params["maxHours"]
+    maxConsec = params["maxConsec"]
+    maxPresence = params["maxPresence"]
+
+    # Sometimes it's impossible to work exactly maxHours
+    maxHours = int(min(maxHours, maxPresence - math.ceil(maxPresence/maxConsec) + 1))
     # Max number of groups of consecutive working hours
-    maxNumGroupConsecH = min(params['maxPresence'] - params['maxHours'] + 1, params['maxHours']*2 - 1)
+    maxNumGroupConsecH = min(params['maxPresence'] - maxHours + 1, maxHours*2 - 1)
     # Length of an encoded nurse
-    legthEncodedNurse = maxNumGroupConsecH + 2
-    return params['nNurses'] * legthEncodedNurse
+    lengthEncodedNurse = maxNumGroupConsecH + 2
+    return params['nNurses'] * lengthEncodedNurse
 
 
 def createProportionDemand(demand, maxPresence, lastInitHour):
@@ -171,37 +177,20 @@ def createProportionDemand(demand, maxPresence, lastInitHour):
             prop[j] += 1
             prop[l-1-j] += 1
 
-    # print(prop)
-    option = 3
+    print(prop)
+    auxDemand = [demand[i] / prop[i] for i in range(l)]
 
-    if option == 0:
-        sumDemand = [0] * l
-        for i in range(lastInitHour):
-            sumDemand[i] = sum(demand[i:min(l,i+maxPresence)])
-            sumDemand[l-i-1] = sum(demand[max(0,l-i-maxPresence):l-i])
-        # print(sumDemand)
-        sumAuxDemand = [sumDemand[i] / prop[i] for i in range(l)]
-
-    elif option == 1:
-        auxDemand = [demand[i] / prop[i] for i in range(l)]
-        # print(auxDemand)
-        sumAuxDemand = [0] * l
-        for i in range(lastInitHour):
-            sumAuxDemand[i] = sum(auxDemand[i:min(l,i+maxPresence)])
-            sumAuxDemand[l-i-1] = sum(auxDemand[max(0,l-i-maxPresence):l-i])
-
-    else:
-        sumAuxDemand = [demand[i] / prop[i] for i in range(l)]
-
-    sumIni = sum(sumAuxDemand[:(l+1)//2])
-    sumFi = sum(sumAuxDemand[(l+1)//2:])
-    # print([round(elem/sumIni, 2) for elem in sumAuxDemand[:(l+1)//2]] + [round(elem/sumFi, 2) for elem in sumAuxDemand[(l+1)//2:]])
+    sumIni = sum(auxDemand[:(l+1)//2])
+    sumFi = sum(auxDemand[(l+1)//2:])
+    # print([round(elem/sumIni, 2) for elem in auxDemand[:(l+1)//2]] + [round(elem/sumFi, 2) for elem in auxDemand[(l+1)//2:]])
+    sumAuxDemand = auxDemand + []
     for i in range(1, (l+1)//2):
         sumAuxDemand[i] += sumAuxDemand[i-1]
         sumAuxDemand[l-i-1] += sumAuxDemand[l-i]
-    sumAuxDemand = [elem/sumIni for elem in sumAuxDemand[:(l+1)//2]] + [elem/sumFi for elem in sumAuxDemand[(l+1)//2:]]
+    firstHalf = [elem/sumIni for elem in sumAuxDemand[:(l+1)//2]]
+    secondHalf = [elem/sumFi for elem in reversed(sumAuxDemand[(l+1)//2:])]
     # print(sumAuxDemand)
-    return sumIni, sumFi, sumAuxDemand
+    return sumIni/(sumIni + sumFi), firstHalf, secondHalf
 
 def proves3():
     demand = [5, 3, 3, 3, 4, 4, 7, 10, 13, 22, 38, 48, 48, 48, 26, 0, 8, 6, 12, 4, 13, 10, 11, 14]
@@ -235,8 +224,7 @@ def decode(population, params):
     lastInitHour = min((hoursDay+1)//2, hoursDay - maxHours - math.ceil(maxHours/maxConsec) + 1 + 1)
 
     # meanLenWorkingDay = maxHours + math.ceil(maxHours/maxConsec) - 1
-    (sumIni, sumFi, sumAuxDemand) = createProportionDemand(demand, maxPresence, lastInitHour)
-    propHalf = sumIni / (sumIni + sumFi)
+    (propHalf, firstHalf, secondHalf) = createProportionDemand(demand, maxPresence, lastInitHour)
 
     listSolutions = []
     populationChr = (ind['chr'] for ind in population)
@@ -250,10 +238,10 @@ def decode(population, params):
             revers = encodedNurse[1] > propHalf # the nurse is reversed
             if not revers:
                 prob = encodedNurse[1] / propHalf
-                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(sumAuxDemand)).__next__()[0]  # the hour she starts working
+                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(firstHalf)).__next__()[0]  # the hour she starts working
             else:
                 prob = (encodedNurse[1]-propHalf) / (1-propHalf)
-                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(reversed(sumAuxDemand))).__next__()[0]   # the hour she starts working
+                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(secondHalf)).__next__()[0]   # the hour she starts working
 
             # assert 0 <= initHour <= lastInitHour
             lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour + 1)/(maxConsec + 1))) + 2)
