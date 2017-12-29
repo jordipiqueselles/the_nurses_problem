@@ -43,6 +43,8 @@ class Brkga:
         itWithoutImpr = 0
 
         for i in range(maxGenerations):
+            t = time.time()
+
             self.population = self.decode(self.population, data)
             evol.append(self._getBestFitness()['fitness'])
 
@@ -62,6 +64,8 @@ class Brkga:
 
             if time.time() - initTime > timeLimit or itWithoutImpr > maxItWithoutImpr:
                 break
+
+            print("Time iteration:", time.time() - t)
 
         self.population = self.decode(self.population, data)
         bestIndividual = self._getBestFitness()
@@ -303,42 +307,43 @@ def decode(population, params):
     populationChr = (ind['chr'] for ind in population)
     for encodedSetNurses in populationChr:
         nurses = []
+        nWorkNurses = nNurses
         for i in range(0, len(encodedSetNurses), maxLenEncNurse):
             # q = min(qMax, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))))
             encodedNurse = encodedSetNurses[i:i + maxLenEncNurse]
             works = encodedNurse[0] >= 0.3  # if the nurse works
 
-            # Get the starting hour
-            revers = encodedNurse[1] > propHalf  # the nurse is reversed
-            if not revers:
-                prob = encodedNurse[1] / propHalf
-                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(firstHalf)).__next__()[0]
-            else:
-                prob = (encodedNurse[1] - propHalf) / (1 - propHalf)
-                initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(secondHalf)).__next__()[0]
-
-            # assert 0 <= initHour <= lastInitHour
-            lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))) + 2)
-            encConsecHours = encodedNurse[2:lenEncNurse]  # the chunks of consecutive hours encoded
-            # assert hoursDay - initHour >= maxHours + (len(encConsecHours) - 1)
-            # assert maxHours <= len(encConsecHours) * maxConsec
-            workedHours = maxHours  # number of hours the nurse works
-            s = sum(encConsecHours)
-            normEncodedNurse = [x / s for x in encConsecHours]
-            chunksHours = [0] * len(normEncodedNurse)  # length of each group of consecutive hours
-
             if works:
+                # Get the starting hour
+                revers = encodedNurse[1] > propHalf  # the nurse is reversed
+                if not revers:
+                    prob = encodedNurse[1] / propHalf
+                    initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(firstHalf)).__next__()[0]
+                else:
+                    prob = (encodedNurse[1] - propHalf) / (1 - propHalf)
+                    initHour = ittls.dropwhile(lambda x: x[1] < prob, enumerate(secondHalf)).__next__()[0]
+
+                # assert 0 <= initHour <= lastInitHour
+                lenEncNurse = min(maxLenEncNurse, int(math.ceil((hoursDay - initHour + 1) / (maxConsec + 1))) + 2)
+                encConsecHours = encodedNurse[2:lenEncNurse]  # the chunks of consecutive hours encoded
+                # assert hoursDay - initHour >= maxHours + (len(encConsecHours) - 1)
+                # assert maxHours <= len(encConsecHours) * maxConsec
+                workedHours = maxHours  # number of hours the nurse works
+                s = sum(encConsecHours)
+                normEncodedNurse = [x / s for x in encConsecHours]
+                chunksHours = [0] * len(normEncodedNurse)  # length of each group of consecutive hours
+
                 # Assign proportionally to each element of normEncodedNurse the length of a group of consecutive hours
+                # chunksHours = [min(maxConsec, int(elem * workedHours)) for elem in normEncodedNurse]
+                # normEncodedNurse = [normEncodedNurse[j] - chunksHours[j] / workedHours for j in range(len(normEncodedNurse))]
                 for j in range(len(normEncodedNurse)):
                     chunksHours[j] = min(maxConsec, int(normEncodedNurse[j] * workedHours))
-                    if chunksHours[j] == maxConsec:
-                        normEncodedNurse[j] = 0
-                    else:
-                        normEncodedNurse[j] -= chunksHours[j] / workedHours
+                    normEncodedNurse[j] -= chunksHours[j] / workedHours
 
                 # Assign the remaining hours to the groups of consecutive hours that are not full
-                sortedAux = list(filter(lambda elem: elem[1] != 0,
-                                        sorted(enumerate(normEncodedNurse), key=lambda x: x[1], reverse=True)))
+                # sortedAux = list(filter(lambda elem: chunksHours[elem[0]] < maxConsec,
+                #                         sorted(enumerate(normEncodedNurse), key=lambda x: x[1], reverse=True)))
+                sortedAux = sorted(enumerate(normEncodedNurse), key=lambda x: x[1], reverse=True)
                 remainingHours = workedHours - sum(chunksHours)
                 # I have to be sure that this will not become an infinite loop
                 while remainingHours > 0:
@@ -349,6 +354,11 @@ def decode(population, params):
                             remainingHours -= 1
                             if remainingHours == 0:
                                 break
+            else:
+                initHour = 0
+                chunksHours = []
+                revers = False
+                nWorkNurses -= 1
 
             # Construct the nurse
             nurse = [0] * initHour
@@ -363,7 +373,7 @@ def decode(population, params):
         # print()
 
         # calculate the dictionary we'll add to listSolutions
-        nWorkNurses = sum(sum(n) > 0 for n in nurses)
+        # nWorkNurses = sum(sum(n) > 0 for n in nurses)
         offer = getOffer(nurses)
         uncovDemand = sum(max(0, demand[i] - offer[i]) for i in range(len(demand)))
         extraOffer = sum((offer[i] - demand[i]) ** 2 for i in range(len(demand)) if offer[i] > demand[i] + 1)
