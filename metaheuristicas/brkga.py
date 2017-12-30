@@ -65,7 +65,7 @@ class Brkga:
             if time.time() - initTime > timeLimit or itWithoutImpr > maxItWithoutImpr:
                 break
 
-            print("Time iteration:", time.time() - t)
+            # print("Time iteration:", time.time() - t)
 
         self.population = self.decode(self.population, data)
         bestIndividual = self._getBestFitness()
@@ -173,55 +173,6 @@ def getChrLength(params):
     return params['nNurses'] * lengthEncodedNurse
 
 
-def createProportionDemand(demand, maxPresence, maxHours, lastInitHour):
-    l = len(demand)
-    prop = [0] * l
-    for i in range(lastInitHour):
-        for j in range(i, min(i + maxPresence, l)):
-            prop[j] += 1
-            prop[l - 1 - j] += 1
-
-    # print(prop)
-    auxDemand = [demand[i] / prop[i] for i in range(l)]
-
-    sumIni = sum(auxDemand[:(l + 1) // 2])
-    sumFi = sum(auxDemand[(l + 1) // 2:])
-    # print([round(elem/sumIni, 2) for elem in auxDemand[:(l+1)//2]] + [round(elem/sumFi, 2) for elem in auxDemand[(l+1)//2:]])
-    sumAuxDemand = auxDemand + []
-    for i in range(1, (l + 1) // 2):
-        sumAuxDemand[i] += sumAuxDemand[i - 1]
-        sumAuxDemand[l - i - 1] += sumAuxDemand[l - i]
-    firstHalf = [elem / sumIni for elem in sumAuxDemand[:(l + 1) // 2]]
-    secondHalf = [elem / sumFi for elem in reversed(sumAuxDemand[(l + 1) // 2:])]
-    # print(sumAuxDemand)
-    return sumIni / (sumIni + sumFi), firstHalf, secondHalf
-
-
-def createProportionDemand2(demand, maxPresence, maxHours, lastInitHour):
-    l = len(demand)
-    maxPresence = min(maxPresence, l)
-    r = round(maxHours / maxPresence, 1)
-    npDemand = np.array([demand]).transpose()
-    matrix = np.zeros((l, l))
-    for (i, row) in enumerate(matrix):
-        if lastInitHour < i < (l-lastInitHour):
-            continue
-        row[i] = 1
-        if i < l//2:
-            for j in range(i+1, min(i+maxPresence, l)):
-                row[j] = r
-        else:
-            for j in range(i-1, max(i-maxPresence, 0), -1):
-                row[j] = r
-
-    matrix = matrix.transpose()
-    for row in matrix:
-        print(row.tolist())
-    print(np.linalg.matrix_rank(matrix))
-    prob = np.linalg.solve(matrix, npDemand)
-    prob /= sum(prob)
-    return prob
-
 def createProportionDemand3(demand, maxPresence, maxHours, lastInitHour):
     l = len(demand)
     maxPresence = min(maxPresence, l)
@@ -236,7 +187,7 @@ def createProportionDemand3(demand, maxPresence, maxHours, lastInitHour):
             auxDemand[j] -= r * prob[i]
             auxDemand[l-j-1] -= r * prob[l-i-1]
 
-    print([round(p, 2) for p in prob])
+    # print([round(p, 2) for p in prob])
     sumIni = sum(prob[:(l + 1) // 2])
     sumFi = sum(prob[(l + 1) // 2:])
     for i in range(1, (l + 1) // 2):
@@ -245,8 +196,8 @@ def createProportionDemand3(demand, maxPresence, maxHours, lastInitHour):
     firstHalf = [elem / sumIni for elem in prob[:(l + 1) // 2]]
     secondHalf = [elem / sumFi for elem in reversed(prob[(l + 1) // 2:])]
 
-    print([round(p, 2) for p in firstHalf])
-    print([round(p, 2) for p in secondHalf])
+    # print([round(p, 2) for p in firstHalf])
+    # print([round(p, 2) for p in secondHalf])
     return sumIni / (sumIni + sumFi), firstHalf, secondHalf
 
 
@@ -254,13 +205,7 @@ def proves3():
     demand = [5, 3, 3, 3, 4, 4, 7, 10, 13, 22, 38, 48, 48, 48, 26, 0, 8, 6, 12, 4, 13, 10, 11, 14]
     maxPresence = 11
     maxHours = 8
-    # prop = createProportionDemand(demand, maxPresence, 10)
-    # print(prop)
-    # matrix = createProportionDemand2(demand, maxPresence, maxHours, 10)
-    # for row in matrix:
-    #     print(row.tolist())
-    # prob = createProportionDemand2(demand, maxPresence, maxHours, 13)
-    # print(prob.tolist())
+
     (p, f, s) = createProportionDemand3(demand, maxPresence, maxHours, 13)
     print([round(p, 2) for p in f])
     print([round(p, 2) for p in s])
