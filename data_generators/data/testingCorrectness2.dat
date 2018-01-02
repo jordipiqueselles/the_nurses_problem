@@ -1,8 +1,0 @@
-// INFEASIBLE
-// That case test is an infeasible instance, because there's only one nurse and she must rest during 2 hours
-minHours=4;
-maxHours=10;
-maxConsec=6;
-maxPresence=12;
-demand=[0 0 1 1 1 1 1 1 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0];
-nNurses=1;

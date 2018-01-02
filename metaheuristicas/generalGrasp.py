@@ -1,9 +1,10 @@
+import os
 import time
 import math
 import multiprocessing as mp
 from functools import partial
 import metaheuristicas.graspNurses as graspNurses
-from otherScripts.utils import eprint
+from otherScripts.utils import eprint, disableVervose
 
 
 def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf, maxItWithoutImpr=30):
@@ -22,7 +23,7 @@ def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf, maxItWithoutImpr=30
     for i in range(maxIter):
         (sol, cost) = problem.construct(alfa)
         (sol, cost) = problem.localSearch(sol)
-        eprint("Iteration:", i, "| Best cost:", bestCost)
+        eprint("Process:", os.getpid(), "Iteration:", i, "| Best cost:", bestCost)
         if cost < bestCost:
             bestSol = sol
             bestCost = cost
@@ -47,6 +48,7 @@ def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count(), timeLi
     :return: The best solution and the best cost
     """
     with mp.Pool(nThreads) as pool:
+        pool.map(disableVervose, [0.5]*nThreads)
         listResults = pool.map(partial(grasp, maxIter=1 + maxIter//nThreads, alfa=alfa, timeLimit=timeLimit,
                                        maxItWithoutImpr=maxItWithoutImpr), [problem]*nThreads)
         bestResult = min(listResults)

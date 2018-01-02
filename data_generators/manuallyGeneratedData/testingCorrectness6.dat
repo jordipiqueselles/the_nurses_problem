@@ -4,5 +4,6 @@ minHours=4;
 maxHours=10;
 maxConsec=6;
 maxPresence=12;
+hoursDay=24;
 demand=[0 0 1 1 1 0 1 1 1 0 2 0 1 1 0 0 0 0 0 0 0 0 0 0];
 nNurses=1;

@@ -3,13 +3,17 @@ import sys
 import multiprocessing as mp
 import math
 
-if '-v' not in sys.argv:
-    nullFile = open('nul', 'w')
-    sys.stderr = nullFile
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+
+def disableVervose(nothing=0):
+    # eprint("Disabling verbose")
+    time.sleep(nothing)
+    nullFile = open('nul', 'w')
+    sys.stderr = nullFile
+    # eprint("Verbose disabled")
 
 #####################################################################
 #####################################################################
