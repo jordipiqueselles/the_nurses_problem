@@ -8,9 +8,9 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def disableVervose(nothing=0):
+def disableVervose(delay=0):
     # eprint("Disabling verbose")
-    time.sleep(nothing)
+    time.sleep(delay)
     nullFile = open('nul', 'w')
     sys.stderr = nullFile
     # eprint("Verbose disabled")

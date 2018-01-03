@@ -56,17 +56,26 @@ if __name__ == '__main__':
         except ValueError:
             print("Invalid value for time", sys.argv[idxTime])
             exit(1)
+        sys.argv.remove('-t')
+        sys.argv.remove(sys.argv[idxTime])
     else:
         maxTime = math.inf
 
     # verbose
     if '-v' not in sys.argv:
         disableVervose()
+    else:
+        sys.argv.remove('-v')
 
     # write results in a file
     if '-w' in sys.argv:
         fileName = "./results"
+        sys.argv.remove('-w')
     else:
         fileName = None
+
+    if len(sys.argv) > 3:
+        print("Invalid option:", sys.argv[3])
+        exit(1)
 
     executeSolver(dataFolder, solver, maxTime, params, fileName)
