@@ -1,10 +1,6 @@
 import math
 import numpy as np
-import matplotlib.pyplot as plt
-import logging
 import time
-import itertools as ittls
-from otherScripts.checkingFunctions import *
 from otherScripts.utils import eprint
 
 
@@ -28,6 +24,7 @@ class Brkga:
         :param mutantsProp: Proportion of mutants generated at each iteration
         :param inheritanceProb: Probability of inheriting from an elite individual
         :param timeLimit: Maximum amount of time to do the computations
+        :param maxItWithoutImpr: Maximum number of iterations without finding an improvement
         :return: The best individual found
         """
 
@@ -43,15 +40,10 @@ class Brkga:
         itWithoutImpr = 0
 
         for i in range(maxGenerations):
-            t = time.time()
-
             self.population = self.decode(self.population, data)
             evol.append(self._getBestFitness()['fitness'])
 
-            # offer = getOffer(self._getBestFitness()['solution'])
-            # diff = [offer[j] - data['demand'][j] for j in range(len(data['demand']))]
-
-            eprint("Generation", i, "| MaxFitness", evol[-1])  #, "| Diff:", diff)
+            eprint("Generation", i, "| MaxFitness", evol[-1])
             if evol[-2] > evol[-1]:
                 itWithoutImpr = 0
             else:
@@ -65,16 +57,8 @@ class Brkga:
             if time.time() - initTime > timeLimit or itWithoutImpr > maxItWithoutImpr:
                 break
 
-            # print("Time iteration:", time.time() - t)
-
         self.population = self.decode(self.population, data)
         bestIndividual = self._getBestFitness()
-
-        # plt.plot(evol)
-        # plt.xlabel('number of generations')
-        # plt.ylabel('Fitness of best individual')
-        # plt.axis([0, len(evol), 0, (chrLength + 1) * chrLength / 2])
-        # plt.show()
 
         eprint("Best individual:", bestIndividual)
 
@@ -152,58 +136,3 @@ class Brkga:
         """
         bestFit = min(self.population, key=lambda x: x['fitness'])
         return bestFit
-
-
-def proves():
-    params = dict()
-    params['hoursDay'] = 24
-    params["maxHours"] = 8
-    params["maxConsec"] = 4
-    params["maxPresence"] = 23
-    params["demand"] = [0] * params['hoursDay']
-    params["minHours"] = 4
-    params['nNurses'] = 100
-
-    lenChr = getChrLength(params)
-    ind = dict()
-    ind['chr'] = np.random.rand(lenChr)
-
-    listNurses = decode([ind], params)
-    for elem in listNurses:
-        nurses = elem['solution']
-        print(answerSatisfiesConstr(nurses, params))
-        print(getOffer(nurses))
-
-
-def proves2():
-    # best cost -> 288
-    params = dict()
-    params['hoursDay'] = 24
-    params["maxHours"] = 8
-    params["maxConsec"] = 4
-    params["maxPresence"] = 10
-    params["demand"] = [elem * (params['hoursDay'] - elem) for elem in range(params['hoursDay'])]
-    params["minHours"] = 4
-    params['nNurses'] = 300
-
-    print(params['demand'])
-
-    solver = Brkga(decode)
-    (cost, nurses) = solver.run(params, getChrLength(params), numIndividuals=200, maxGenerations=200,
-                                maxItWithoutImpr=100)
-
-    for nurse in nurses:
-        print(nurse)
-    print()
-    print(answerSatisfiesConstr(nurses, params))
-    print(params['demand'])
-    print(getOffer(nurses))
-    print("Cost:", cost)
-
-
-if __name__ == '__main__':
-    from metaheuristicas.decoderNurses import *
-    # logging.basicConfig(level=logging.DEBUG)
-    # logging.debug('hola')
-    # logging.info('adeu')
-    proves2()

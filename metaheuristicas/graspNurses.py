@@ -13,8 +13,14 @@ class GraspNurses:
         self.maxPresence = maxPresence
         self.feasibleNurses = self._generateAllNurses()
 
-
-    def _recursiveGenerateAllNurses(self, nurse, initHour, nHours):
+    def _recursiveGenerateAllNurses(self, nurse, currentHour, nHours):
+        """
+        Auxiliar function to generate all the feasible working days
+        :param nurse: The nurse being generated
+        :param currentHour: The current hour
+        :param nHours: Remaining number of working hours to assign
+        :return: The nurses generated
+        """
         constrMaxConsec = check.getConsecHours([nurse])[0] <= self.maxConsec
 
         if not constrMaxConsec:
@@ -25,7 +31,7 @@ class GraspNurses:
 
         else:
             nurses = []
-            for hour in range(initHour, min(initHour + 2, len(nurse) - nHours + 1)):
+            for hour in range(currentHour, min(currentHour + 2, len(nurse) - nHours + 1)):
                 auxNurse = copy.copy(nurse)
                 auxNurse[hour] = 1
                 nurses += self._recursiveGenerateAllNurses(auxNurse, hour + 1, nHours - 1)
@@ -38,11 +44,9 @@ class GraspNurses:
         """
         nurses = []
         for nHours in range(self.minHours, self.maxHours+1):
-            # print("Generating with nHours ->", nHours)
             nurse = [1] + [0] * (self.maxPresence - 1)
             nurses += self._recursiveGenerateAllNurses(nurse, 1, nHours - 1)
 
-        # print("Total nurses generated:", len(nurses))
         # drop the 0s at the end
         nurses = [list(ittl.dropwhile(lambda x: x == 0, reversed(nurse))) for nurse in nurses]
         return nurses

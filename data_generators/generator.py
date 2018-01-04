@@ -7,6 +7,9 @@ def generateFeasible1(distrDemand, distrMaxHours, distrMaxConsec, distrMaxPresen
     """
     It creates a feasible instance of the problem given a distribution of the demand
     :param distrDemand: Probabilistic distribution of the demand
+    :param distrMaxHours: Probabilistic distribution of maxHours
+    :param distrMaxConsec: Probabilistic distribution of maxConsec
+    :param distrMaxPresence: Probabilistic distribution of maxPresence
     :param hoursDay: Number of hours in a day
     :return: A dictionary containing the params of a feasible instance and the matrix of a possible solution
     """
@@ -107,9 +110,9 @@ def generateRandom(distrDemand, distrMinHours, distrMaxHours, distrMaxConsec, di
     maxHours = max(0, distrMaxHours.__next__())
     maxConsec = max(0, distrMaxConsec.__next__())
     maxPresence = max(0, distrMaxPresence.__next__())
-    # distrDemand = (int(rnd.gauss(10, 2)) for _ in ittl.count())
     demand = [distrDemand.__next__() for _ in range(hoursDay)]
-    nNurses = max(demand) + 2 - rnd.randint(0, 2)
+    maxDemand = max(demand)
+    nNurses = maxDemand + int(maxDemand/100 + 1) - rnd.randint(0, int(maxDemand/100 + 1))
 
     return {"hoursDay": hoursDay, "minHours": minHours, "maxHours": maxHours, "maxConsec": maxConsec,
             "maxPresence": maxPresence, "demand": demand, "nNurses": nNurses}

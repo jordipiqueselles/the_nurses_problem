@@ -1,5 +1,6 @@
 import itertools as ittl
 
+
 def getNursesHours(nurses):
     """
     Get the amount of hours each nurse works
