@@ -178,8 +178,8 @@ def executeSolver(datFolder, solver, maxTime, solverParams, fileName=None):
         # no solution
         if cost == -1:
             print(bcolors.UNDERLINE + "no solution" + bcolors.ENDC)
+            print("should be:", params["solution"])
             shouldBeInfeasible = params["solution"] != "FEASIBLE"
-            print("should be infeasible:", shouldBeInfeasible)
             if shouldBeInfeasible:
                 print(bcolors.OKGREEN + "OK" + bcolors.ENDC)
             else:
@@ -193,8 +193,8 @@ def executeSolver(datFolder, solver, maxTime, solverParams, fileName=None):
             costOk = cost <= params["cost"]
             print("cost ok:", costOk)
             print("constrains satisfied:", satConstr[1])
+            print("should be:", params["solution"])
             shouldBeFeasible = params["solution"] != "INFEASIBLE"
-            print("should be feasible:", shouldBeFeasible)
             if costOk and satConstr[0] and shouldBeFeasible:
                 print(bcolors.OKGREEN + "OK" + bcolors.ENDC)
             else:

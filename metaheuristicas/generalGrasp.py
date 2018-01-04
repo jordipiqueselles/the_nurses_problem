@@ -1,9 +1,10 @@
+import sys
 import os
 import time
 import math
 import multiprocessing as mp
 from functools import partial
-from otherScripts.utils import eprint, disableVervose
+from otherScripts.utils import *
 
 
 def grasp(problem, maxIter=10, alfa=0.1, timeLimit=math.inf, maxItWithoutImpr=30):
@@ -49,7 +50,8 @@ def parallelGrasp(problem, maxIter=10, alfa=0.1, nThreads=mp.cpu_count(), timeLi
     :return: The best solution and the best cost
     """
     with mp.Pool(nThreads) as pool:
-        pool.map(disableVervose, [0.5]*nThreads)
+        if not mode.verbose:
+            pool.map(disableVervose, [0.5]*nThreads)
         listResults = pool.map(partial(grasp, maxIter=1 + maxIter//nThreads, alfa=alfa, timeLimit=timeLimit,
                                        maxItWithoutImpr=maxItWithoutImpr), [problem]*nThreads)
         bestResult = min(listResults)

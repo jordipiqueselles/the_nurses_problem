@@ -45,20 +45,22 @@ if __name__ == '__main__':
         if generator == '0':
             name = "random_" + str(i+1) + ".dat"
             params = generateRandom(distrDemand, distrMinHours, distrMaxHours,
-                                              distrMaxConsec, distrMaxPresence, hoursDay)
+                                    distrMaxConsec, distrMaxPresence, hoursDay)
             writeParams(params, "RANDOM", folder + name, -1)
 
         # using generateFeasible1
         elif generator == '1':
             name = "feasible1_" + str(i+1) + ".dat"
             (params, nurses) = generateFeasible1(distrDemand, distrMaxHours, distrMaxConsec, distrMaxPresence, hoursDay)
+            # stops the program if a generated instance is not OK
+            assert isFeasibleGeneratorOk(nurses, params)
+            cost = sum(sum(nurse) > 0 for nurse in nurses)
+            writeParams(params, "FEASIBLE", folder + name, cost)
 
         # using generateFeasible2
         elif generator == '2':
             name = "feasible2_" + str(i+1) + ".dat"
             (params, nurses) = generateFeasible2(distrNNurses, hoursDay)
-
-        if generator in ['1', '2']:
             # stops the program if a generated instance is not OK
             assert isFeasibleGeneratorOk(nurses, params)
             cost = sum(sum(nurse) > 0 for nurse in nurses)

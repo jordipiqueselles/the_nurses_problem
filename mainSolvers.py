@@ -55,8 +55,8 @@ if __name__ == '__main__':
         except ValueError:
             print("Invalid value for time", sys.argv[idxTime])
             exit(1)
-        sys.argv.remove('-t')
         sys.argv.remove(sys.argv[idxTime])
+        sys.argv.remove('-t')
     else:
         maxTime = math.inf
 
