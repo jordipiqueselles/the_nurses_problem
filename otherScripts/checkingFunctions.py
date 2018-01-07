@@ -1,3 +1,4 @@
+import math
 import itertools as ittl
 
 
@@ -84,15 +85,16 @@ def analyseFeasability(params):
     demand = params["demand"]
     nNurses = params["nNurses"]
 
-    if maxHours == 0 or maxHours < minHours or maxConsec == 0 or maxPresence == 0 or maxPresence < minHours:
+    if maxHours == 0 or maxHours < minHours or maxConsec == 0 or maxPresence == 0 or \
+            (maxPresence - math.ceil(minHours/maxConsec) - minHours + 1 < 0):
         result = "INFEASIBLE"
-    elif sum(demand) > nNurses * maxHours:
+    elif sum(demand) > nNurses * maxHours or max(demand) > nNurses:
         result = "INFEASIBLE"
     else:
         result = "UNKNOWN"
 
     # We could call part of the body of the function generateFeasible in order to try to generate a nurses
-    # matrix that represents a solution. If we can generete this matrix, then a solution must exists
+    # matrix that represents a solution. If we can generete this matrix, then a solution must exist
 
     return result
 
@@ -104,7 +106,7 @@ def isFeasibleGeneratorOk(nurses, params):
     :param params: Parameters of the problem
     :return: True if it is correct, otherwise False
     """
-    satConstr = answerSatisfiesConstr(nurses, params)
+    satConstr = answerSatisfiesConstr(nurses, params)[0]
     feasibility = analyseFeasability(params)
     return satConstr and feasibility != "INFEASIBLE"
 
@@ -149,6 +151,9 @@ def answerSatisfiesConstr(nurses, params):
     restingHours = getRestingHours(nurses)
     constrRestHours = all((1 >= restHours for restHours in restingHours))
 
-    allconstraints = [constrNNurses, constrMinMaxHours, constrDemand,
-                      constrMaxPresence, constrMaxConsec, constrRestHours]
-    return all(allconstraints), allconstraints
+    # allconstraints = [constrNNurses, constrMinMaxHours, constrDemand,
+    #                   constrMaxPresence, constrMaxConsec, constrRestHours]
+    allconstraints = {'constrNNurses': constrNNurses, 'constrMinMaxHours': constrMinMaxHours,
+                      'constrDemand': constrDemand, 'constrMaxPresence': constrMaxPresence,
+                      'constrMaxConsec': constrMaxConsec, 'constrRestHours': constrRestHours}
+    return all(allconstraints.items()), allconstraints

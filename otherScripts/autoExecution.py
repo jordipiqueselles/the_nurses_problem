@@ -111,16 +111,20 @@ def executeOpl(pathToDat, maxTime, solverParams):
 
 def executeGrasp(pathToDat, maxTime, solverParams):
     params = getParams(pathToDat)
-    problem = graspNurses.GraspNurses(params['demand'], params['minHours'], params['maxHours'], params['maxConsec'],
-                                      params['maxPresence'])
-    numIter = solverParams['numIter']
-    alfa = solverParams['alfa']
-    nThreads = solverParams['nThreads']
-    maxItWithoutImpr = solverParams['maxItWithoutImpr']
 
-    (cost, sol) = generalGrasp.parallelGrasp(problem, numIter, alfa, nThreads, maxTime, maxItWithoutImpr)
+    if analyseFeasability(params) != "INFEASIBLE":
+        problem = graspNurses.GraspNurses(params['demand'], params['minHours'], params['maxHours'], params['maxConsec'],
+                                          params['maxPresence'])
+        numIter = solverParams['numIter']
+        alfa = solverParams['alfa']
+        nThreads = solverParams['nThreads']
+        maxItWithoutImpr = solverParams['maxItWithoutImpr']
 
-    if cost <= params['nNurses']:
+        (cost, sol) = generalGrasp.parallelGrasp(problem, numIter, alfa, nThreads, maxTime, maxItWithoutImpr)
+    else:
+        return -1, []
+
+    if -1 < cost <= params['nNurses']:
         return cost, sol
     else:
         return -1, []
@@ -128,19 +132,23 @@ def executeGrasp(pathToDat, maxTime, solverParams):
 
 def executeBrkga(pathToDat, maxTime, solverParams):
     params = getParams(pathToDat)
-    chrLen = decoderNurses.getChrLength(params)
-    numIndividuals = solverParams['numIndividuals']
-    maxGenerations = solverParams['maxGenerations']
-    eliteProp = solverParams['eliteProp']
-    mutantsProp = solverParams['mutantsProp']
-    inheritanceProp = solverParams['inheritanceProb']
-    maxItWithoutImpr = solverParams['maxItWithoutImpr']
 
-    solver = generalBrkga.Brkga(decoderNurses.decode)
-    (cost, solution) = solver.run(params, chrLen, numIndividuals, maxGenerations, eliteProp,
-                                  mutantsProp, inheritanceProp, maxTime, maxItWithoutImpr)
+    if analyseFeasability(params) != "INFEASIBLE":
+        chrLen = decoderNurses.getChrLength(params)
+        numIndividuals = solverParams['numIndividuals']
+        maxGenerations = solverParams['maxGenerations']
+        eliteProp = solverParams['eliteProp']
+        mutantsProp = solverParams['mutantsProp']
+        inheritanceProp = solverParams['inheritanceProb']
+        maxItWithoutImpr = solverParams['maxItWithoutImpr']
 
-    if answerSatisfiesConstr(solution, params)[0]:
+        solver = generalBrkga.Brkga(decoderNurses.decode)
+        (cost, solution) = solver.run(params, chrLen, numIndividuals, maxGenerations, eliteProp,
+                                      mutantsProp, inheritanceProp, maxTime, maxItWithoutImpr)
+    else:
+        return -1, []
+
+    if cost > -1 and answerSatisfiesConstr(solution, params)[0]:
         return cost, solution
     else:
         return -1, []
@@ -158,13 +166,14 @@ def executeSolver(datFolder, solver, maxTime, solverParams, fileName=None):
     """
     writeResults = fileName is not None
     if writeResults:
-        fileName = fileName + '_' + solver.__name__ + ".txt"
-        resultsFile = open(fileName, 'w')
-        resultsFile.write("dat_file, cost, time \n")
+        fileName = fileName + '_' + solver.__name__
+        costAndTimeFile = open(fileName + "_costTime.csv", 'w')
+        costAndTimeFile.write("dat_file, cost, time \n")
+        nursesFile = open(fileName + "_nurses.txt", 'w')
 
     listDat = list(filter(lambda f: len(f) > 5 and f[-4:] == ".dat", os.listdir(datFolder)))
     listDat.sort(key=lambda f: len(f))
-    for (i, file) in enumerate(listDat[:]):
+    for (i, file) in enumerate(listDat[:1]):
         print(bcolors.BOLD + str(i+1) + "/" + str(len(listDat)) + " (" + solver.__name__ + ")" + bcolors.ENDC)
         print(bcolors.BOLD + "Executing", file, bcolors.ENDC)
         pathToDat = datFolder + file
@@ -202,7 +211,12 @@ def executeSolver(datFolder, solver, maxTime, solverParams, fileName=None):
         print()
 
         if writeResults:
-            resultsFile.write(file + ", " + str(cost) + ", " + str(t) + "\n")
+            costAndTimeFile.write(file + ", " + str(cost) + ", " + str(t) + "\n")
+            nursesFile.write(file + '\n')
+            for nurse in sol:
+                nursesFile.write(str(nurse) + '\n')
+            nursesFile.write('\n')
 
     if writeResults:
-        resultsFile.close()
+        costAndTimeFile.close()
+        nursesFile.close()
